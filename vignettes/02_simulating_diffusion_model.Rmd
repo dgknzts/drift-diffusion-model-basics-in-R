@@ -1,0 +1,5 @@
+---
+title: "02_simulating_diffusion_model"
+output: html_notebook
+---
+

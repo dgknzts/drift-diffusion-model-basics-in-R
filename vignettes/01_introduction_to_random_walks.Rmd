@@ -1,0 +1,201 @@
+---
+title: "1. Introduction to Random Walks in R"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    highlight: tango
+    df_print: kable # For nicer table printing
+vignette: >
+  %\VignetteIndexEntry{1. Introduction to Random Walks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+# Load necessary packages
+library(ggplot2)
+library(dplyr) # For data manipulation, if needed
+
+# Source the functions from your R script
+# Adjust the path if your Rmd file is in a different location relative to the R script
+source("../R/01_random_walk_simulator.R")
+```
+
+## What is a Random Walk?
+
+A random walk is a mathematical object, known as a stochastic or random process, that describes a path that consists of a succession of random steps on some mathematical space. In simpler terms, it's a process where the next position is determined by a random step from the current position.
+
+Random walks are fundamental to understanding more complex models like the Diffusion Decision Model (DDM), where they represent the noisy accumulation of evidence over time leading to a decision.
+
+In this vignette, we'll explore a simple one-dimensional random walk where evidence accumulates until it reaches one of two decision thresholds.
+
+## Simulating a Single Random Walk Trial
+
+We have created a function simulate_random_walk_trial() in R/01_random_walk_simulator.R to simulate a single instance of this process.
+
+**Key Parameters:**
+
+-   start_point: The initial value of the evidence (default: 0).
+
+-   threshold: The (positive) value of the decision boundaries. A decision is made when the absolute evidence reaches this threshold (default: 10).
+
+-   drift: The average amount added to the evidence at each step. A positive drift biases the walk towards the upper threshold, and a negative drift biases it towards the lower threshold (default: 0.1).
+
+-   sd_step: The standard deviation of the step size, representing the noise in the accumulation process (default: 1).
+
+-   max_steps: The maximum number of steps allowed before a trial is terminated (to prevent infinite loops if a threshold is never reached) (default: 10000).
+
+Let's simulate a few single trials:
+
+```{r single_rw_trials}
+set.seed(123) # For reproducibility
+
+trial1 <- simulate_random_walk_trial(drift = 0.2, threshold = 5, sd_step = 1)
+print(paste("Trial 1: Choice =", trial1$choice, ", RT (steps) =", trial1$rt))
+
+trial2 <- simulate_random_walk_trial(drift = -0.1, threshold = 5, sd_step = 1)
+print(paste("Trial 2: Choice =", trial2$choice, ", RT (steps) =", trial2$rt))
+
+trial3 <- simulate_random_walk_trial(drift = 0.01, threshold = 5, sd_step = 1, max_steps = 50) # Forcing a potential non-decision
+print(paste("Trial 3: Choice =", trial3$choice, ", RT (steps) =", trial3$rt))
+```
+
+The choice output is 1 for the upper threshold, -1 for the lower threshold, and NA if max_steps was reached. The rt is the number of steps taken.
+
+## Simulating a Random Walk Experiment
+
+To understand the behavior of the random walk model, we typically simulate many trials. The simulate_random_walk_experiment() function handles this. It takes n_trials as an argument and any other parameters that simulate_random_walk_trial() accepts.
+
+Let's simulate an experiment with 1000 trials:
+
+```{r rw_experiment}
+set.seed(456)
+n_sim_trials <- 1000
+rw_data <- simulate_random_walk_experiment(
+  n_trials = n_sim_trials,
+  threshold = 10,
+  drift = 0.05, # A slight positive drift
+  sd_step = 1.5
+)
+
+# Display the first few rows of the simulated data
+# Using kable for nicer printing if knitr is rendering to HTML
+knitr::kable(head(rw_data), caption = "First 6 trials of the simulated random walk experiment.")
+```
+
+The resulting rw_data is a data frame containing the trial number, choice, and rt for each simulated trial.
+
+### Analyzing Experiment Results
+
+#### **1. Choice Proportions**
+
+We can calculate the proportion of choices for the upper and lower thresholds.
+
+```{r choice_proportions}
+# Remove NA choices if any (e.g., if max_steps was reached)
+valid_choices <- na.omit(rw_data$choice)
+
+choice_counts <- table(valid_choices)
+choice_proportions <- prop.table(choice_counts)
+
+
+knitr::kable(as.data.frame(choice_proportions), col.names = c("Choice", "Proportion"), caption = "Choice Proportions")
+
+# A simple bar plot of choice proportions
+barplot(choice_proportions,
+        main = "Proportion of Choices",
+        xlab = "Choice (1 = Upper, -1 = Lower)",
+        ylab = "Proportion",
+        col = c("lightblue", "salmon"))
+```
+
+With a positive drift (drift = 0.05), we expect more choices for the upper threshold (Choice 1).
+
+#### **2. Reaction Time (RT) Distributions**
+
+The distribution of reaction times (number of steps) is a key output of these models. We can plot histograms for RTs associated with each choice.
+
+```{r rt_distributions}
+# Filter out NA RTs (if any trial hit max_steps)
+valid_rt_data <- subset(rw_data, !is.na(rt))
+
+ggplot(valid_rt_data, aes(x = rt, fill = factor(choice))) +
+  geom_histogram(binwidth = 5, alpha = 0.7, position = "identity") +
+  facet_wrap(~factor(choice, labels = c("Lower Threshold (-1)", "Upper Threshold (1)"))) +
+  labs(
+    title = "Random Walk RT Distributions",
+    x = "Reaction Time (Number of Steps)",
+    y = "Frequency",
+    fill = "Choice"
+  ) +
+  theme_minimal()
+
+# Summary statistics for RTs
+rt_summary <- valid_rt_data %>%
+  group_by(choice) %>%
+  summarise(
+    Mean_RT = mean(rt),
+    Median_RT = median(rt),
+    SD_RT = sd(rt),
+    Min_RT = min(rt),
+    Max_RT = max(rt),
+    N = n()
+  )
+
+knitr::kable(rt_summary, caption = "Summary Statistics for RTs by Choice")
+```
+
+**Observations:**
+
+-   The RT distributions are typically positively skewed (long tail to the right).
+
+-   The average RT can be influenced by the drift rate, threshold, and noise.
+
+## Effect of Parameters
+
+Let's briefly explore how changing parameters affects the outcome.
+
+### Effect of Drift Rate (drift)
+
+A stronger (absolute) drift rate should lead to faster decisions and a higher probability of choosing the threshold in the direction of the drift.
+
+```{r effect_of_drift, eval=FALSE}
+set.seed(789)
+drift_low_data <- simulate_random_walk_experiment(
+  n_trials = n_sim_trials, drift = 0.01, threshold = 10, sd_step = 1)
+drift_high_data <- simulate_random_walk_experiment(
+  n_trials = n_sim_trials, drift = 0.5, threshold = 10, sd_step = 1)
+
+# You would then plot and compare choice proportions and RT distributions for these.
+# For example:
+# prop.table(table(na.omit(drift_low_data$choice)))
+# prop.table(table(na.omit(drift_high_data$choice)))
+# hist(drift_low_data$rt[!is.na(drift_low_data$rt) & drift_low_data$choice == 1])
+# hist(drift_high_data$rt[!is.na(drift_high_data$rt) & drift_high_data$choice == 1])
+```
+
+### Effect of Threshold (threshold)
+
+Higher thresholds generally lead to slower but more accurate (less influenced by noise, more by drift) decisions.
+
+```{r effect_of_threshold, eval=FALSE}
+# This chunk is set to eval=FALSE for brevity.
+set.seed(101112)
+thresh_low_data <- simulate_random_walk_experiment(
+  n_trials = n_sim_trials, drift = 0.05, threshold = 5, sd_step = 1)
+thresh_high_data <- simulate_random_walk_experiment(
+  n_trials = n_sim_trials, drift = 0.05, threshold = 15, sd_step = 1)
+
+# Compare choice proportions and RT distributions.
+```
+
+## Conclusion
+
+This vignette demonstrated how to simulate a simple random walk model in R. We saw how to simulate single trials and entire experiments, and how to analyze basic outputs like choice proportions and RT distributions. This forms a conceptual basis for understanding the more complex Diffusion Decision Model, which operates in continuous time.
+
+The next step would be to implement the Diffusion Model itself, which is essentially a continuous-time version of this random walk.
