@@ -42,7 +42,7 @@ Contributions and feedback are welcome! Please open an issue or submit a pull re
 
 ## References
 
-*   Smith, P. L., & Ratcliff, R. (YEAR). An Introduction to the Diffusion Model of Decision-Making. *In B. U. Forstmann & B. M. Turner (Eds.), An Introduction to Model-Based Cognitive Neuroscience.* (This is the primary chapter this repo aims to illustrate).
+*   Smith, P. L., & Ratcliff, R. (2024). An Introduction to the Diffusion Model of Decision-Making. *In B. U. Forstmann & B. M. Turner (Eds.), An Introduction to Model-Based Cognitive Neuroscience.* (This is the primary chapter this repo aims to illustrate).
 *   Ratcliff, R. (1978). A theory of memory retrieval. *Psychological Review, 85*(2), 59–108.
 
 ## License
