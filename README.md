@@ -36,10 +36,6 @@ This work is heavily inspired by and aims to replicate concepts from "An Introdu
 *   `s`: Within-trial noise (standard deviation of the normally distributed increments, often fixed to 0.1)
     *   *(Parameter variability like `sv`, `sz`, `st` can be added as an extension)*
 
-## Contributing
-
-Contributions and feedback are welcome! Please open an issue or submit a pull request.
-
 ## References
 
 *   Smith, P. L., & Ratcliff, R. (2024). An Introduction to the Diffusion Model of Decision-Making. *In B. U. Forstmann & B. M. Turner (Eds.), An Introduction to Model-Based Cognitive Neuroscience.* (This is the primary chapter this repo aims to illustrate).
