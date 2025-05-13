@@ -15,7 +15,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
 # Load necessary packages
 library(ggplot2)
@@ -24,6 +24,7 @@ library(tidyr) # For data wrangling if needed
 
 # Source the functions from your DDM R script
 source("../R/02_diffusion_simulator.R")
+source("../R/utils/plot_basic_ddm_path_rt.R")
 ```
 
 ## Introduction to the Diffusion Decision Model (DDM)
@@ -180,18 +181,6 @@ The DDM is well-known for predicting positively skewed RT distributions.
 valid_ddm_rt_data <- ddm_data %>% filter(!is.na(rt))
 
 if(nrow(valid_ddm_rt_data) > 0) {
-  # Plot for total RT
-  p_rt_total <- ggplot(valid_ddm_rt_data, aes(x = rt, fill = factor(choice))) +
-    geom_histogram(binwidth = 0.025, alpha = 0.8, position = "identity", color="black") +
-    facet_wrap(~factor(choice, labels = c("Lower Boundary (0)", "Upper Boundary (1)"))) +
-    labs(
-      title = "DDM Total RT Distributions",
-      x = "Reaction Time (s)",
-      y = "Frequency",
-      fill = "Choice"
-    ) +
-    theme_minimal()
-  print(p_rt_total)
 
   # Plot for decision_time only
   p_rt_decision <- ggplot(valid_ddm_rt_data, aes(x = decision_time, fill = factor(choice))) +
@@ -250,10 +239,10 @@ path_params <- list(
   ter = 0.1   # ter is not directly used in path plotting but good for context
 )
 
-n_paths_to_plot <- 10 # Number of example paths
+n_paths_to_plot <- 5 # Number of example paths
 all_paths_data <- vector("list", n_paths_to_plot) # To store data for each path
 
-set.seed(303) # For reproducibility of these specific paths
+set.seed(343) # For reproducibility of these specific paths
 for (i in 1:n_paths_to_plot) {
   trial_with_path <- simulate_diffusion_trial_with_path(
     v = path_params$v,
@@ -302,6 +291,51 @@ if(nrow(plot_df_paths) > 0) {
 
 # Display the first few rows of the combined path data
 knitr::kable(head(plot_df_paths), caption = "Sample of combined path data for plotting.")
+```
+
+### Visualizing Evidence Accumulation Paths with Helper Function
+
+To better visualize the DDM process, we'll use our custom helper function \`plot_ddm_paths_with_histograms()\`. This function will display several trial paths, decision boundaries, the starting point, and the average drift line. It will also generate separate plots for the RT distributions at each boundary.
+
+```{r fig.height=6, fig.width=5}
+# Parameters for path visualization
+path_plot_params_int <- list(
+  v = 0.05,    # Moderate positive drift
+  a = 1,
+  z = 0.5,    # Unbiased
+  s = 0.4,   # More noise
+  ter = 0.0,  # For ridges, we're plotting decision_time so ter=0 in sim is cleaner
+  dt = 0.01
+)
+
+n_example_paths_int <- 200 # Need more trials for decent ridges
+
+# Simulate the trials
+set.seed(505)
+example_trials_list_int <- vector("list", n_example_paths_int)
+for (i in 1:n_example_paths_int) {
+  example_trials_list_int[[i]] <- simulate_diffusion_trial_with_path(
+    v = path_plot_params_int$v,
+    a = path_plot_params_int$a,
+    z = path_plot_params_int$z,
+    s = path_plot_params_int$s,
+    dt = path_plot_params_int$dt,
+    ter = path_plot_params_int$ter # Using ter=0 from params for this plot
+  )
+}
+
+if(length(example_trials_list_int) > 20){ # Check if enough valid trials for hists
+  plot_ddm_paths_with_histograms(
+    trials_data_list = example_trials_list_int,
+    v_drift = path_plot_params_int$v,
+    z_start = path_plot_params_int$z,
+    a_threshold = path_plot_params_int$a,
+    hist_binwidth = 0.2, # Adjust as needed
+    max_time_to_plot = 5
+  )
+} else {
+  print("Not enough valid trials with diverse outcomes to generate combined plot.")
+}
 ```
 
 ## Conclusion
