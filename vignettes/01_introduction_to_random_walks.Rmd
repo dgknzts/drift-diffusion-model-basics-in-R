@@ -1,6 +1,6 @@
 ---
 title: "1. Introduction to Random Walks in R"
-author: "Your Name"
+author: "Dogukan Nami Oztas"
 date: "`r Sys.Date()`"
 output:
   html_document:

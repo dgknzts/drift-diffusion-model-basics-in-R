@@ -1,6 +1,6 @@
 ---
 title: "2. Simulating the Diffusion Decision Model (DDM)"
-author: "Your Name"
+author: "Dogukan Nami Oztas"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -23,7 +23,7 @@ library(dplyr) # For data manipulation
 library(tidyr) # For data wrangling if needed
 
 # Source the functions from your DDM R script
-source("../R/02_diffusion_simulator.R")
+source("../R/02_ddm_simulator_basic.R")
 source("../R/utils/plot_basic_ddm_path_rt.R")
 ```
 
