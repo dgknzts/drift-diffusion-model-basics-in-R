@@ -59,7 +59,7 @@ This project now includes an interactive Shiny application (`app.R`) that allows
     cd diffusion-decision-models-basics-in-R
     ```
 3.  Open the `DDM_Basics_R.Rproj` file in RStudio.
-4.  Install the required R packages if you haven't already. The app uses `shiny`, `ggplot2`, `dplyr`, and `patchwork`. You might also need `ggridges` if your plotting function still uses it.
+4.  Install the required R packages if you haven't already. The app uses `shiny`, `ggplot2`, `dplyr`, and `patchwork`.
     ```R
     # Run this in the RStudio console:
     install.packages(c("shiny", "ggplot2", "dplyr", "patchwork")) # Add "ggridges", "moments" if used
