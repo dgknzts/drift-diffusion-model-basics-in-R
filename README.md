@@ -35,6 +35,37 @@ This work is heavily inspired by and aims to replicate concepts from "An Introdu
 *   `ter` (or `t0`): Non-decision time (encoding and response execution time)
 *   `s`: Within-trial noise (standard deviation of the normally distributed increments, often fixed to 0.1)
     *   *(Parameter variability like `sv`, `sz`, `st` can be added as an extension)*
+    
+## Interactive DDM Explorer (Shiny App) ✨
+
+This project now includes an interactive Shiny application (`app.R`) that allows you to explore the Diffusion Decision Model (DDM) with across-trial parameter variability in real-time!
+
+**Features:**
+
+*   Adjust mean DDM parameters (`v`, `a`, `z`, `s`, `ter`).
+*   Control across-trial variability parameters (`sv`, `sz`, `st0`).
+*   Simulate DDM trials and instantly visualize:
+    *   Evidence accumulation paths.
+    *   Flanking RT histograms for upper and lower boundary responses.
+    *   Distributions of the sampled trial-specific parameters.
+    *   Summary statistics (choice proportions, RT means/medians).
+
+**How to Run the App Locally:**
+
+1.  Ensure you have R and RStudio installed.
+2.  Clone this repository to your local machine:
+    ```bash
+    git clone https://github.com/YourUsername/diffusion-decision-models-basics-in-R.git
+    cd diffusion-decision-models-basics-in-R
+    ```
+3.  Open the `DDM_Basics_R.Rproj` file in RStudio.
+4.  Install the required R packages if you haven't already. The app uses `shiny`, `ggplot2`, `dplyr`, and `patchwork`. You might also need `ggridges` if your plotting function still uses it.
+    ```R
+    # Run this in the RStudio console:
+    install.packages(c("shiny", "ggplot2", "dplyr", "patchwork")) # Add "ggridges", "moments" if used
+    ```
+5.  Open the `app.R` file in RStudio.
+6.  Click the "Run App" button that appears at the top of the R script editor, or type `shiny::runApp()` in the R console.
 
 ## References
 

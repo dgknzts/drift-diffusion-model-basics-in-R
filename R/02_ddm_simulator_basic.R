@@ -194,80 +194,6 @@ simulate_diffusion_experiment <- function(n_trials = 100,
   return(df_results)
 }
 
-
-# --- Example Usage (you can run this interactively in RStudio) ---
-if (interactive()) {
-  # Test a single trial
-  set.seed(789) # for reproducibility
-  single_ddm_trial <- simulate_diffusion_trial(
-    v = 0.25,    # Drift rate
-    a = 1.2,     # Threshold separation
-    z = 0.6,     # Starting point (a/2 for unbiased)
-    s = 0.1,     # Noise (default)
-    dt = 0.001,  # Time step (default)
-    ter = 0.1,   # Non-decision time
-    max_decision_time = 5.0 # Max decision time (default)
-  )
-  cat("Single DDM Trial Result:\n")
-  print(single_ddm_trial)
-  
-  # Test a small experiment
-  set.seed(101112)
-  ddm_experiment_results <- simulate_diffusion_experiment(
-    n_trials = 1000,
-    v = 0.2,   # Moderate positive drift
-    a = 1.0,
-    z = 0.5,   # Start in the middle
-    s = 0.1,
-    ter = 0.1
-  )
-  cat("\nDDM Experiment Results (first few trials):\n")
-  print(head(ddm_experiment_results))
-  
-  # Example for plotting RT distributions (requires ggplot2 and dplyr)
-  if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)) {
-    library(ggplot2)
-    library(dplyr)
-    
-    set.seed(131415)
-    large_ddm_data <- simulate_diffusion_experiment(
-      n_trials = 2000,
-      v = 0.15,      # Moderate drift
-      a = 1.2,       # Reasonable threshold
-      z = 0.6,       # Unbiased start (a/2)
-      s = 0.5,       # Standard noise
-      ter = 0.2,     # Reasonable non-decision time
-      dt = 0.1,  # Larger time step for faster simulation
-      max_decision_time = 4 # Default
-    )
-    
-    # Filter out NA RTs for plotting
-    plot_data <- large_ddm_data %>% filter(!is.na(rt))
-    
-    if (nrow(plot_data) > 0) {
-      p <- ggplot(plot_data, aes(x = rt, fill = factor(choice))) +
-        geom_histogram(binwidth = 0.05, alpha = 0.7, position = "identity") +
-        facet_wrap(~factor(choice, labels = c("Lower Boundary (0)", "Upper Boundary (1)"))) +
-        labs(title = "DDM RT Distributions",
-             x = "Reaction Time (s)",
-             y = "Frequency",
-             fill = "Choice") +
-        theme_minimal()
-      print(p)
-      
-      # Choice proportions
-      cat("\nChoice Proportions (1=Upper, 0=Lower):\n")
-      print(prop.table(table(plot_data$choice, useNA = "ifany")))
-      
-    } else {
-      cat("\nNo valid trials to plot (all may have hit max_decision_time).\n")
-    }
-  } else {
-    cat("\nInstall ggplot2 and dplyr packages to see example plots (run: install.packages(c(\"ggplot2\", \"dplyr\")) ).\n")
-  }
-}
-
-
 #' Simulate a single DDM trial and store the evidence accumulation path.
 #'
 #' This version of the DDM trial simulator records the evidence level at each
@@ -373,4 +299,79 @@ simulate_diffusion_trial_with_path <- function(v,
               path_data = path_df,
               a = a)) # Return 'a' to make plotting thresholds easier
 }
+
+
+
+# --- Example Usage (you can run this interactively in RStudio) ---
+# if (interactive()) {
+#   # Test a single trial
+#   set.seed(789) # for reproducibility
+#   single_ddm_trial <- simulate_diffusion_trial(
+#     v = 0.25,    # Drift rate
+#     a = 1.2,     # Threshold separation
+#     z = 0.6,     # Starting point (a/2 for unbiased)
+#     s = 0.1,     # Noise (default)
+#     dt = 0.001,  # Time step (default)
+#     ter = 0.1,   # Non-decision time
+#     max_decision_time = 5.0 # Max decision time (default)
+#   )
+#   cat("Single DDM Trial Result:\n")
+#   print(single_ddm_trial)
+#   
+#   # Test a small experiment
+#   set.seed(101112)
+#   ddm_experiment_results <- simulate_diffusion_experiment(
+#     n_trials = 1000,
+#     v = 0.2,   # Moderate positive drift
+#     a = 1.0,
+#     z = 0.5,   # Start in the middle
+#     s = 0.1,
+#     ter = 0.1
+#   )
+#   cat("\nDDM Experiment Results (first few trials):\n")
+#   print(head(ddm_experiment_results))
+#   
+#   # Example for plotting RT distributions (requires ggplot2 and dplyr)
+#   if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)) {
+#     library(ggplot2)
+#     library(dplyr)
+#     
+#     set.seed(131415)
+#     large_ddm_data <- simulate_diffusion_experiment(
+#       n_trials = 2000,
+#       v = 0.15,      # Moderate drift
+#       a = 1.2,       # Reasonable threshold
+#       z = 0.6,       # Unbiased start (a/2)
+#       s = 0.5,       # Standard noise
+#       ter = 0.2,     # Reasonable non-decision time
+#       dt = 0.1,  # Larger time step for faster simulation
+#       max_decision_time = 4 # Default
+#     )
+#     
+#     # Filter out NA RTs for plotting
+#     plot_data <- large_ddm_data %>% filter(!is.na(rt))
+#     
+#     if (nrow(plot_data) > 0) {
+#       p <- ggplot(plot_data, aes(x = rt, fill = factor(choice))) +
+#         geom_histogram(binwidth = 0.05, alpha = 0.7, position = "identity") +
+#         facet_wrap(~factor(choice, labels = c("Lower Boundary (0)", "Upper Boundary (1)"))) +
+#         labs(title = "DDM RT Distributions",
+#              x = "Reaction Time (s)",
+#              y = "Frequency",
+#              fill = "Choice") +
+#         theme_minimal()
+#       print(p)
+#       
+#       # Choice proportions
+#       cat("\nChoice Proportions (1=Upper, 0=Lower):\n")
+#       print(prop.table(table(plot_data$choice, useNA = "ifany")))
+#       
+#     } else {
+#       cat("\nNo valid trials to plot (all may have hit max_decision_time).\n")
+#     }
+#   } else {
+#     cat("\nInstall ggplot2 and dplyr packages to see example plots (run: install.packages(c(\"ggplot2\", \"dplyr\")) ).\n")
+#   }
+# }
+
 

@@ -1,5 +1,3 @@
-
-
 #' Simulate a Single DDM Trial with Across-Trial Parameter Variability
 #'
 #' This function simulates one trial of the Diffusion Decision Model (DDM),
@@ -242,4 +240,124 @@ simulate_diffusion_experiment_variable <- function(n_trials = 100,
   )
   
   return(df_results)
+}
+
+
+#' Simulate a single DDM trial with across-trial parameter variability AND store path.
+#'
+#' Combines features of simulate_diffusion_trial_variable and
+#' simulate_diffusion_trial_with_path.
+#' (Add more detailed Roxygen comments here similar to simulate_diffusion_trial_variable)
+#'
+#' @param mean_v Numeric. Mean drift rate.
+#' @param a Numeric. Threshold.
+#' @param mean_z Numeric. Mean starting point.
+#' @param s Numeric. Within-trial noise. Default 0.1.
+#' @param dt Numeric. Time step. Default 0.001.
+#' @param mean_ter Numeric. Mean non-decision time. Default 0.1.
+#' @param sv Numeric. SD of v variability. Default 0.
+#' @param sz Numeric. Range of z variability. Default 0.
+#' @param st0 Numeric. Range of ter variability. Default 0.
+#' @param max_decision_time Numeric. Max decision time. Default 5.0.
+#'
+#' @return A list containing choice, rt, decision_time, v_trial, z_trial, ter_trial,
+#'   and path_data (data frame with time_s, evidence).
+#' @export
+simulate_diffusion_trial_variable_with_path <- function(mean_v,
+                                                        a,
+                                                        mean_z,
+                                                        s = 0.1,
+                                                        dt = 0.001,
+                                                        mean_ter = 0.1,
+                                                        sv = 0,
+                                                        sz = 0,
+                                                        st0 = 0,
+                                                        max_decision_time = 5.0) {
+  
+  # --- 1. Sample trial-specific parameters ---
+  v_trial <- rnorm(1, mean = mean_v, sd = sv)
+  
+  if (sz > 0) {
+    z_samp <- runif(1, min = mean_z - sz / 2, max = mean_z + sz / 2)
+  } else {
+    z_samp <- mean_z
+  }
+  epsilon_z <- 1e-6
+  z_trial <- max(epsilon_z, min(z_samp, a - epsilon_z))
+  if (z_trial <= 0 || z_trial >= a || is.na(z_trial)) {
+    z_trial <- mean_z
+    if (z_trial <= 0 || z_trial >= a || is.na(z_trial)) {
+      z_trial <- a / 2
+    }
+  }
+  
+  if (st0 > 0) {
+    ter_samp <- runif(1, min = mean_ter - st0 / 2, max = mean_ter + st0 / 2)
+  } else {
+    ter_samp <- mean_ter
+  }
+  ter_trial <- max(0, ter_samp)
+  
+  # --- 2. Run the core diffusion process using trial-specific parameters & store path ---
+  evidence <- z_trial
+  current_decision_time <- 0
+  max_steps <- max_decision_time / dt
+  
+  estimated_path_length <- as.integer(max_steps + 10)
+  path_time_s <- numeric(estimated_path_length)
+  path_evidence <- numeric(estimated_path_length)
+  
+  time_steps_taken <- 0
+  path_idx <- 1
+  
+  path_time_s[path_idx] <- current_decision_time
+  path_evidence[path_idx] <- evidence
+  path_idx <- path_idx + 1
+  
+  while (evidence > 0 && evidence < a && time_steps_taken < max_steps) {
+    increment <- rnorm(n = 1, mean = v_trial * dt, sd = s * sqrt(dt))
+    evidence <- evidence + increment
+    time_steps_taken <- time_steps_taken + 1
+    current_decision_time <- time_steps_taken * dt
+    
+    if (path_idx <= estimated_path_length) {
+      path_time_s[path_idx] <- current_decision_time
+      path_evidence[path_idx] <- evidence
+    } else {
+      path_time_s <- c(path_time_s, current_decision_time) # Fallback grow
+      path_evidence <- c(path_evidence, evidence)
+    }
+    path_idx <- path_idx + 1
+  }
+  
+  decision_time_val <- current_decision_time
+  actual_path_length <- path_idx - 1
+  path_df_out <- data.frame(
+    time_s = path_time_s[1:actual_path_length],
+    evidence = path_evidence[1:actual_path_length]
+  )
+  
+  choice_val <- NA
+  rt_val <- NA
+  
+  if (time_steps_taken >= max_steps) {
+    # Path data still recorded up to this point
+  } else {
+    if (evidence >= a) {
+      choice_val <- 1
+    } else { # evidence <= 0
+      choice_val <- 0
+    }
+    rt_val <- decision_time_val + ter_trial
+  }
+  
+  return(list(
+    choice = choice_val,
+    rt = rt_val,
+    decision_time = if(is.na(choice_val)) NA else decision_time_val, # decision_time is NA if timeout
+    v_trial = v_trial,
+    z_trial = z_samp, # Return original sampled z before clipping for inspection
+    ter_trial = ter_samp, # Return original sampled ter
+    path_data = path_df_out 
+  ))
 }
