@@ -2,7 +2,7 @@
 .Rhistory
 .Rdata
 .Renviron
-*.html
+#*.html
 *.pdf
 *.png
 *.jpeg
