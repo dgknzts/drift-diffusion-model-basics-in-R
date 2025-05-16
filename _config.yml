@@ -1,0 +1,6 @@
+theme: jekyll-theme-minimal
+title: DDM Basics in R
+description: A comprehensive guide to Diffusion Decision Models in R
+show_downloads: true
+sidebar:
+  nav: "docs" 
