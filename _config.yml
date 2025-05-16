@@ -3,4 +3,37 @@ title: DDM Basics in R
 description: A comprehensive guide to Diffusion Decision Models in R
 show_downloads: true
 sidebar:
-  nav: "docs" 
+  nav: "docs"
+
+# Custom settings
+defaults:
+  - scope:
+      path: ""
+      type: "tutorials"
+    values:
+      layout: "tutorial"
+
+# Collections
+collections:
+  tutorials:
+    output: true
+    permalink: /vignettes/:name/
+
+# Exclude files from processing
+exclude:
+  - .git/
+  - .Rproj.user/
+  - .RData
+  - .Rhistory
+  - README.md
+  - LICENCE.txt
+  - DDM_Basics_R.Rproj
+  - app.R
+  - R/
+  - scripts/
+  - data/
+
+# Plugins
+plugins:
+  - jekyll-relative-links
+  - jekyll-seo-tag 

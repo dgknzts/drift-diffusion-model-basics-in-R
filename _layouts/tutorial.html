@@ -1,0 +1,63 @@
+---
+layout: default
+---
+
+<div class="tutorial-content">
+  <div class="tutorial-header">
+    <h1>{{ page.title }}</h1>
+    {% if page.description %}
+    <p class="tutorial-description">{{ page.description }}</p>
+    {% endif %}
+  </div>
+
+  <div class="tutorial-body">
+    {{ content }}
+  </div>
+
+  <div class="tutorial-navigation">
+    {% if page.previous %}
+    <a href="{{ page.previous.url }}" class="prev-tutorial">← {{ page.previous.title }}</a>
+    {% endif %}
+    {% if page.next %}
+    <a href="{{ page.next.url }}" class="next-tutorial">{{ page.next.title }} →</a>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.tutorial-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.tutorial-header {
+  margin-bottom: 30px;
+}
+
+.tutorial-description {
+  color: #666;
+  font-size: 1.1em;
+}
+
+.tutorial-body {
+  line-height: 1.6;
+}
+
+.tutorial-navigation {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+}
+
+.prev-tutorial, .next-tutorial {
+  text-decoration: none;
+  color: #0366d6;
+}
+
+.prev-tutorial:hover, .next-tutorial:hover {
+  text-decoration: underline;
+}
+</style> 

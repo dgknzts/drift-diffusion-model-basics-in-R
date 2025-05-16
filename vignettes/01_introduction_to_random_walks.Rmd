@@ -1,5 +1,8 @@
 ---
-title: "1. Introduction to Random Walks in R"
+layout: tutorial
+title: "Introduction to Random Walks in R"
+description: "Learn the basics of random walks and their implementation in R"
+order: 1
 author: "Dogukan Nami Oztas"
 date: "`r Sys.Date()`"
 output:
