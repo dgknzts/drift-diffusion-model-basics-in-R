@@ -11,9 +11,9 @@
 
 <meta name="author" content="Dogukan Nami Oztas" />
 
-<meta name="date" content="2025-05-15" />
+<meta name="date" content="2025-05-16" />
 
-<title>3. Exploring Across-Trial Parameter Variability in the DDM</title>
+<title>Exploring Across-Trial Parameter Variability in the DDM</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -1556,10 +1556,10 @@ border-radius: 0px;
 
 
 
-<h1 class="title toc-ignore">3. Exploring Across-Trial Parameter
+<h1 class="title toc-ignore">Exploring Across-Trial Parameter
 Variability in the DDM</h1>
 <h4 class="author">Dogukan Nami Oztas</h4>
-<h4 class="date">2025-05-15</h4>
+<h4 class="date">2025-05-16</h4>
 
 </div>
 
@@ -2250,14 +2250,32 @@ the leading edge (fastest part) of the RT distribution.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Expected Observation:</strong> With st0 &gt; 0, the RT
+<p><strong>Expected Observation:</strong> With st0 &gt; 0, the RT
 distributions should look “smeared out” more uniformly, especially at
-the fast end. The minimum RT will be effectively mean_ter - st0/2 (plus
+the fast end. The minimum RT will be effectively mean_ter - st0/2 (plus
 minimum decision time), and the overall distribution will be a
-convolution of the decision time distribution and the
-uniform ter distribution. It tends to make the entire distribution wider
-without necessarily increasing skew as much as sv does.</p>
+convolution of the decision time distribution and the uniform ter
+distribution. It tends to make the entire distribution wider without
+necessarily increasing skew as much as sv does.</p>
 </div>
+</div>
+<div id="interactively-exploring-parameters-with-the-shiny-app" class="section level2">
+<h2>Interactively Exploring Parameters with the Shiny App</h2>
+<p>While this vignette has shown static examples of how parameter
+variability impacts DDM predictions, you can explore these effects
+dynamically using the Shiny application included in this project
+(<code>app.R</code>).</p>
+<p>The app allows you to: * Modify all key DDM parameters (means and
+variabilities) using sliders and numeric inputs. * Instantly re-simulate
+and visualize the resulting DDM paths, RT distributions, and sampled
+parameter distributions.</p>
+<p>This provides an excellent hands-on way to build intuition about the
+model.</p>
+<p><strong>To run the Shiny app:</strong> 1. Open the
+<code>DDM_Basics_R.Rproj</code> file in RStudio. 2. Ensure the necessary
+packages (<code>shiny</code>, <code>ggplot2</code>, <code>dplyr</code>,
+<code>patchwork</code>) are installed. 3. Open <code>app.R</code> and
+click “Run App”.</p>
 </div>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
