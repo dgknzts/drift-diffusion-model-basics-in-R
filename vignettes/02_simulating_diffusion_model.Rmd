@@ -1,7 +1,10 @@
 ---
-title: "2. Simulating the Diffusion Decision Model (DDM)"
+layout: tutorial
+title: "Simulating the Diffusion Decision Model (DDM)"
+description: "How to simulate the DDM in R and understand its parameters."
+order: 2
 author: "Dogukan Nami Oztas"
-date: "`r Sys.Date()`"
+date: "2024-03-20"
 output:
   html_document:
     toc: true
@@ -16,7 +19,12 @@ vignette: >
 ---
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
 # Load necessary packages
 library(ggplot2)
 library(dplyr) # For data manipulation
@@ -107,7 +115,7 @@ trial_C <- simulate_diffusion_trial(v = 0.0, a = 1.0, z = 0.5, s = 0.1, ter = 0.
 print(paste("Trial C: Choice =", trial_C$choice, ", RT =", round(trial_C$rt, 3), "s"))
 ```
 
-The choice is 1 if the upper boundary a is reached, and 0 if the lower boundary 0 is reached.
+The choice is 1 if the upper boundary a is reached, and 0 if the lower boundary 0 is reached.
 
 ## Simulating a DDM Experiment
 
@@ -265,7 +273,7 @@ plot_df_paths <- bind_rows(all_paths_data)
 threshold_a <- path_params$a
 ```
 
-Now we can plot these paths using ggplot2.
+Now we can plot these paths using ggplot2.
 
 ```{r ddm_path_plotting, fig.width=8, fig.height=6}
 if(nrow(plot_df_paths) > 0) {

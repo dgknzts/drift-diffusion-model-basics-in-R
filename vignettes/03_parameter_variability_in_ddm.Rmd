@@ -1,7 +1,10 @@
 ---
-title: "3. Exploring Across-Trial Parameter Variability in the DDM"
+layout: tutorial
+title: "Exploring Across-Trial Parameter Variability in the DDM"
+description: "Simulate and visualize the effects of parameter variability in the DDM."
+order: 3
 author: "Dogukan Nami Oztas"
-date: "`r Sys.Date()`"
+date: "2024-03-20"
 output:
   html_document:
     toc: true
@@ -16,14 +19,18 @@ vignette: >
 ---
 
 ```{r setup_variability, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
 # Load necessary packages
 library(ggplot2)
 library(dplyr)
 library(tidyr) # For pivot_longer if needed for plotting multiple parameters
 
 # Source the DDM simulation functions
-# Assuming your files are named as discussed:
 source("../R/02_ddm_simulator_basic.R")    # For standard DDM simulations (comparison)
 source("../R/03_ddm_simulator_variable.R") # For DDM simulations with variability
 ```
@@ -400,7 +407,7 @@ summary_st0 <- combined_st0_data %>% group_by(model_type, choice_label) %>%
 knitr::kable(summary_st0, caption = "RT Summary: st0 effect", digits=3)
 ```
 
-**Expected Observation:** With st0 \> 0, the RT distributions should look "smeared out" more uniformly, especially at the fast end. The minimum RT will be effectively mean_ter - st0/2 (plus minimum decision time), and the overall distribution will be a convolution of the decision time distribution and the uniform ter distribution. It tends to make the entire distribution wider without necessarily increasing skew as much as sv does.
+**Expected Observation:** With st0 \> 0, the RT distributions should look "smeared out" more uniformly, especially at the fast end. The minimum RT will be effectively mean_ter - st0/2 (plus minimum decision time), and the overall distribution will be a convolution of the decision time distribution and the uniform ter distribution. It tends to make the entire distribution wider without necessarily increasing skew as much as sv does.
 
 ## Interactively Exploring Parameters with the Shiny App
 

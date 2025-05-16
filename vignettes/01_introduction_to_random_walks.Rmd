@@ -4,7 +4,7 @@ title: "Introduction to Random Walks in R"
 description: "Learn the basics of random walks and their implementation in R"
 order: 1
 author: "Dogukan Nami Oztas"
-date: "`r Sys.Date()`"
+date: "2024-03-20"
 output:
   html_document:
     toc: true
@@ -19,7 +19,12 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
 # Load necessary packages
 library(ggplot2)
 library(dplyr) # For data manipulation, if needed

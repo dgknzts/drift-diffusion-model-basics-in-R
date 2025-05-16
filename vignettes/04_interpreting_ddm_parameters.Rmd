@@ -1,12 +1,15 @@
 ---
-title: "4. Interpreting DDM Parameters and Their Effects"
+layout: tutorial
+title: "Interpreting DDM Parameters and Their Effects"
+description: "Understand and visualize the effects of DDM parameters on decisions and RTs."
+order: 4
 author: "Dogukan Nami Oztas"
-date: "`r Sys.Date()`"
+date: "2024-03-20"
 output:
   html_document:
     toc: true
     toc_float: true
-    theme: united # or another theme you like
+    theme: united
     highlight: tango
     df_print: kable
 vignette: >
@@ -16,14 +19,20 @@ vignette: >
 ---
 
 ```{r setup_interpret_params, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center', fig.width=9, fig.height=6)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center',
+  fig.width = 9,
+  fig.height = 6
+)
 # Load necessary packages
 library(ggplot2)
 library(dplyr)
 library(patchwork) # Used by our plotting helper
 
 # Source the DDM simulation functions and plotting helper
-# Adjust paths if your file structure is different
 source("../R/03_ddm_simulator_variable.R") # Using the variable simulator as it's more general
 source("../R/utils/plot_parameter_comparison.R") # Our new plotting helper
 ```
@@ -107,9 +116,9 @@ plot_ddm_parameter_comparison(
 )
 ```
 
-Observation: As expected, a lower mean_v leads to slower RTs, lower accuracy (higher proportion of choices for the "wrong" boundary, here Choice 0 if mean_v is positive), and potentially more skewed RT distributions due to the increased influence of noise.
+Observation: As expected, a lower mean_v leads to slower RTs, lower accuracy (higher proportion of choices for the "wrong" boundary, here Choice 0 if mean_v is positive), and potentially more skewed RT distributions due to the increased influence of noise.
 
-High mean_v (Easier Task):
+High mean_v (Easier Task):
 
 ```{r sim_high_mean_v_interpret}
 params_high_v <- baseline_params_vignette
@@ -128,7 +137,7 @@ plot_ddm_parameter_comparison(
 )
 ```
 
-Observation: A higher mean_v results in faster RTs, higher accuracy for the favored response, and RT distributions that are typically less skewed and more concentrated at faster times.
+Observation: A higher mean_v results in faster RTs, higher accuracy for the favored response, and RT distributions that are typically less skewed and more concentrated at faster times.
 
 ## 2. Threshold Separation (a)
 
@@ -172,7 +181,7 @@ plot_ddm_parameter_comparison(
 )
 ```
 
-High a (Accuracy Focus):
+High a (Accuracy Focus):
 
 ```{r sim_high_a_interpret}
 params_high_a <- baseline_params_vignette
