@@ -4,7 +4,7 @@ title: "Introduction to Random Walks in R"
 description: "Learn the basics of random walks and their implementation in R"
 order: 1
 author: "Dogukan Nami Oztas"
-date: "2024-03-20"
+date: "2025-05-16"
 output:
   html_document:
     toc: true
