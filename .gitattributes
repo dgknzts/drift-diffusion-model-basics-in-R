@@ -1,0 +1,4 @@
+*.Rmd linguist-language=R
+*.R linguist-language=R
+*.html linguist-detectable=false
+*.nb.html linguist-detectable=false 
