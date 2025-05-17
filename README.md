@@ -62,7 +62,7 @@ This project now includes an interactive Shiny application (`app.R`) that allows
 4.  Install the required R packages if you haven't already. The app uses `shiny`, `ggplot2`, `dplyr`, and `patchwork`.
     ```R
     # Run this in the RStudio console:
-    install.packages(c("shiny", "ggplot2", "dplyr", "patchwork")) # Add "ggridges", "moments" if used
+    install.packages(c("shiny", "ggplot2", "dplyr", "patchwork"))
     ```
 5.  Open the `app.R` file in RStudio.
 6.  Click the "Run App" button that appears at the top of the R script editor, or type `shiny::runApp()` in the R console.
