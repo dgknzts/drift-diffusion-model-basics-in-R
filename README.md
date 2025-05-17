@@ -1,4 +1,4 @@
-# Diffusion Decision Model (DDM) Basics in R - From Scratch
+# Drift Diffusion Model (DDM) Basics in R - From Scratch
 
 This repository provides a resource for understanding and implementing the fundamental principles of the Diffusion Decision Model (DDM) from scratch using the R programming language. The goal is to present the underlying logic and simulation of the model in the simplest and most accessible way.
 
