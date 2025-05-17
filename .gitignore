@@ -17,3 +17,6 @@ ehthumbs.db
 Thumbs.db
 # Data files (if large and not meant to be version controlled)
 # data/*.csv
+
+# Publishing related files
+publishing/
