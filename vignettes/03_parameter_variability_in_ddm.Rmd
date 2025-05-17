@@ -404,13 +404,18 @@ knitr::kable(summary_st0, caption = "RT Summary: st0 effect", digits=3)
 
 ## Interactively Exploring Parameters with the Shiny App
 
-While this vignette has shown static examples of how parameter variability impacts DDM predictions, you can explore these effects dynamically using the Shiny application included in this project (`app.R`).
+While this vignette has shown static examples of how parameter variability impacts DDM predictions, you can explore these effects dynamically using the Shiny demonstration included in this project in the `local-app` directory.
 
-The app allows you to: \* Modify all key DDM parameters (means and variabilities) using sliders and numeric inputs. \* Instantly re-simulate and visualize the resulting DDM paths, RT distributions, and sampled parameter distributions.
+The demo allows you to: 
+* Modify all key DDM parameters (means and variabilities) using sliders and numeric inputs. 
+* Instantly re-simulate and visualize the resulting DDM paths, RT distributions, and sampled parameter distributions.
 
 This provides an excellent hands-on way to build intuition about the model.
 
-**To run the Shiny app:** 1. Open the `DDM_Basics_R.Rproj` file in RStudio. 2. Ensure the necessary packages (`shiny`, `ggplot2`, `dplyr`, `patchwork`) are installed. 3. Open `app.R` and click "Run App".
+**To run the Shiny demo:** 
+1. Open the `DDM_Basics_R.Rproj` file in RStudio. 
+2. Ensure the necessary packages (`shiny`, `ggplot2`, `dplyr`, `patchwork`) are installed. 
+3. Run the command `shiny::runApp("local-app")` in the R console.
 
 ## Conclusion
 

@@ -48,7 +48,7 @@
 <div class="page-header"><h1 id="diffusion-decision-model-ddm-basics-in-r---from-scratch">Diffusion Decision Model (DDM) Basics in R - From Scratch<a class="anchor" aria-label="anchor" href="#diffusion-decision-model-ddm-basics-in-r---from-scratch"></a>
 </h1></div>
 <p>This repository provides a resource for understanding and implementing the fundamental principles of the Diffusion Decision Model (DDM) from scratch using the R programming language. The goal is to present the underlying logic and simulation of the model in the simplest and most accessible way.</p>
-<p>This work is heavily inspired by and aims to replicate concepts from “An Introduction to the Diffusion Model of Decision-Making” by Philip L. Smith and Roger Ratcliff.</p>
+<p>This work is heavily inspired by and aims to replicate concepts from "An Introduction to the Diffusion Model of Decision-Making" by Philip L. Smith and Roger Ratcliff.</p>
 <div class="section level2">
 <h2 id="contents">Contents<a class="anchor" aria-label="anchor" href="#contents"></a>
 </h2>
@@ -114,7 +114,7 @@
 <div class="section level2">
 <h2 id="interactive-ddm-explorer-shiny-app-">Interactive DDM Explorer (Shiny App) ✨<a class="anchor" aria-label="anchor" href="#interactive-ddm-explorer-shiny-app-"></a>
 </h2>
-<p>This project now includes an interactive Shiny application (<code>app.R</code>) that allows you to explore the Diffusion Decision Model (DDM) with across-trial parameter variability in real-time!</p>
+<p>This project now includes an interactive Shiny demo (in the <code>local-app</code> directory) that allows you to explore the Diffusion Decision Model (DDM) with across-trial parameter variability in real-time!</p>
 <p><strong>Features:</strong></p>
 <ul>
 <li>Adjust mean DDM parameters (<code>v</code>, <code>a</code>, <code>z</code>, <code>s</code>, <code>ter</code>).</li>
@@ -134,10 +134,9 @@
 <li>Clone this repository to your local machine: <code>bash     git clone https://github.com/YourUsername/diffusion-decision-models-basics-in-R.git     cd diffusion-decision-models-basics-in-R</code>
 </li>
 <li>Open the <code>DDM_Basics_R.Rproj</code> file in RStudio.</li>
-<li>Install the required R packages if you haven’t already. The app uses <code>shiny</code>, <code>ggplot2</code>, <code>dplyr</code>, and <code>patchwork</code>. <code>R     # Run this in the RStudio console:     install.packages(c("shiny", "ggplot2", "dplyr", "patchwork"))</code>
+<li>Install the required R packages if you haven't already. The app uses <code>shiny</code>, <code>ggplot2</code>, <code>dplyr</code>, and <code>patchwork</code>. <code>R     # Run this in the RStudio console:     install.packages(c("shiny", "ggplot2", "dplyr", "patchwork"))</code>
 </li>
-<li>Open the <code>app.R</code> file in RStudio.</li>
-<li>Click the “Run App” button that appears at the top of the R script editor, or type <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> in the R console.</li>
+<li>Run the command <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp("local-app")</a></code> in the R console.</li>
 </ol>
 </div>
 <div class="section level2">
