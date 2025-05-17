@@ -17,16 +17,10 @@ This work is heavily inspired by and aims to replicate concepts from "An Introdu
     *   Understanding DDM parameters (drift rate, threshold, starting point, etc.)
     *   Exploring parameter variability in DDM
 
-*   **Utility Scripts (`scripts/`):**
-    *   `update_site.R` - Updates the pkgdown documentation site
-    *   `publish_app.R` - Publishes the Shiny app to shinyapps.io
-    *   `build_clean.R` - Cleans and rebuilds the documentation
 
-*   **Shiny App (`inst/shiny-app/`):**
+*   **Shiny App (`local-app/`):**
     *   Interactive app for exploring DDM parameters and visualizing results
     *   Published online at: https://dgknzts.shinyapps.io/DDM-Basics/
-
-*   **Local Demo (`local-app/`):**
     *   Basic demonstration version of the DDM Shiny app for easy local execution
     *   Simplified version for educational purposes
 
@@ -69,40 +63,3 @@ Or visit the hosted version at: https://dgknzts.shinyapps.io/DDM-Basics/
 ## License
 
 This project is licensed under the MIT License - see the `LICENSE` file for details.
-
-## Running the Local Demo App
-
-To run the basic DDM demo on your local machine:
-
-1. Make sure you have R installed (https://www.r-project.org/)
-
-2. Install the required packages by running the following in R:
-   ```r
-   install.packages(c("shiny", "ggplot2", "dplyr", "patchwork"))
-   ```
-
-3. Clone or download this repository
-
-4. Open R or RStudio and set your working directory to the root of this project
-
-5. Run the demo with:
-   ```r
-   shiny::runApp("local-app")
-   ```
-
-## Features of the Basic DDM Demo
-
-- Interactive parameter adjustment for the DDM
-- Visualization of decision paths and RT distributions
-- Analysis of parameter variability effects
-- Summary statistics for model outputs
-
-## Required File Structure
-
-The demo app expects the following file structure:
-- `local-app/app.R` (basic DDM demo app)
-- `R/02_ddm_simulator_basic.R` (basic DDM functions)
-- `R/03_ddm_simulator_variable.R` (variability functions)
-- `R/utils/plot_basic_ddm_path_rt.R` (plotting functions)
-
-If you're having trouble running the demo, check that these files exist in the correct locations.
