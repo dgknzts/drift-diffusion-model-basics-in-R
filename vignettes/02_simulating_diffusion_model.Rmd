@@ -151,7 +151,7 @@ summary(ddm_data)
 
 #### **1. Choice Proportions**
 
-```{r}
+```{r, fig.alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation"}
 # Filter out NA choices (if max_decision_time was hit)
 valid_ddm_choices <- na.omit(ddm_data$choice)
 
@@ -177,7 +177,7 @@ With a positive drift (v = 0.15), we expect more choices for the upper boundary 
 
 The DDM is well-known for predicting positively skewed RT distributions.
 
-```{r ddm_rt_distributions}
+```{r ddm_rt_distributions, fig.alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times"}
 # Filter out NA RTs
 valid_ddm_rt_data <- ddm_data %>% filter(!is.na(rt))
 
@@ -268,7 +268,7 @@ threshold_a <- path_params$a
 
 Now we can plot these paths using ggplot2.
 
-```{r ddm_path_plotting, fig.width=8, fig.height=6}
+```{r ddm_path_plotting, fig.width=8, fig.height=6, fig.alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries"}
 if(nrow(plot_df_paths) > 0) {
   ggplot(plot_df_paths, aes(x = time_s, y = evidence, group = trial_id, color = factor(final_choice))) +
     geom_line(alpha = 0.8, linewidth = 0.7) +
@@ -289,16 +289,13 @@ if(nrow(plot_df_paths) > 0) {
 } else {
   print("No path data to plot.")
 }
-
-# Display the first few rows of the combined path data
-knitr::kable(head(plot_df_paths), caption = "Sample of combined path data for plotting.")
 ```
 
 ### Visualizing Evidence Accumulation Paths with Helper Function
 
 To better visualize the DDM process, we'll use our custom helper function \`plot_ddm_paths_with_histograms()\`. This function will display several trial paths, decision boundaries, the starting point, and the average drift line. It will also generate separate plots for the RT distributions at each boundary.
 
-```{r fig.height=6, fig.width=5}
+```{r, fig.height=6, fig.width=5, fig.alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times"}
 # Parameters for path visualization
 path_plot_params_int <- list(
   v = 0.05,    # Moderate positive drift

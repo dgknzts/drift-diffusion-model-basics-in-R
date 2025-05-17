@@ -5,6 +5,11 @@ navbar:
   structure:
     left:
       - articles
+      - demo
+  components:
+    demo:
+      text: Interactive Demo
+      href: articles/shiny_app.html
 
 articles:
   - title: "Tutorials"
@@ -13,6 +18,9 @@ articles:
       - "02_simulating_diffusion_model" 
       - "03_parameter_variability_in_ddm"
       - "04_interpreting_ddm_parameters"
+      - "shiny_app"
+      # Add your new vignette by adding its file name (without .Rmd extension):
+      # - "05_your_new_vignette_filename"
 
 development:
   mode: auto

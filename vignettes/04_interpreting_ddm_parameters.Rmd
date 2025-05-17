@@ -92,7 +92,7 @@ Let's compare our baseline (mean_v = 0.15) with a lower mean_v (e.g., 0.05, repr
 
 **Low mean_v (Harder Task):**
 
-```{r sim_low_mean_v_interpret}
+```{r sim_low_mean_v_interpret, fig.alt="Comparison of reaction time distributions between baseline and low drift rate (mean_v) conditions, showing slower and more variable decisions with lower drift rate"}
 params_low_v <- baseline_params_vignette
 params_low_v$mean_v <- 0.05
 
@@ -113,7 +113,7 @@ Observation: As expected, a lower mean_v leads to slower RTs, lower accuracy (hi
 
 High mean_v (Easier Task):
 
-```{r sim_high_mean_v_interpret}
+```{r sim_high_mean_v_interpret, fig.alt="Comparison of reaction time distributions between baseline and high drift rate (mean_v) conditions, showing faster and more accurate decisions with higher drift rate"}
 params_high_v <- baseline_params_vignette
 params_high_v$mean_v <- 0.30
 
@@ -156,7 +156,7 @@ Let's compare our baseline (a = 1.0) with a lower a (e.g., 0.7, speed focus) and
 
 **Low a (Speed Focus):**
 
-```{r sim_low_a_interpret}
+```{r sim_low_a_interpret, fig.alt="Comparison of reaction time distributions between baseline and low threshold (a) conditions, demonstrating the speed-accuracy tradeoff with lower thresholds leading to faster but less accurate decisions"}
 params_low_a <- baseline_params_vignette
 params_low_a$a <- 0.3
 params_low_a$mean_z <- params_low_a$a / 2 # Keep z unbiased
@@ -176,7 +176,7 @@ plot_ddm_parameter_comparison(
 
 High a (Accuracy Focus):
 
-```{r sim_high_a_interpret}
+```{r sim_high_a_interpret, fig.alt="Comparison of reaction time distributions between baseline and high threshold (a) conditions, showing slower but more accurate decisions with higher evidence thresholds"}
 params_high_a <- baseline_params_vignette
 params_high_a$a <- 1
 params_high_a$mean_z <- params_high_a$a / 2 # Keep z unbiased
@@ -217,7 +217,7 @@ Let's compare our baseline (s = 0.1) with a higher s (e.g., your default of 0.35
 
 **Higher s (More Within-Trial Noise):**
 
-```{r sim_high_s_interpret}
+```{r sim_high_s_interpret, fig.alt="Comparison of reaction time distributions between baseline and high within-trial noise (s) conditions, showing how increased noise leads to more variable decision times and lower accuracy"}
 params_high_s <- baseline_params_vignette
 params_high_s$s <- 0.35 # Your default, quite noisy
 
@@ -257,7 +257,7 @@ Let's compare our baseline (where sv = 0) with a version where sv is substantial
 
 **Non-Zero sv:**
 
-```{r sim_non_zero_sv_interpret}
+```{r sim_non_zero_sv_interpret, fig.alt="Comparison of reaction time distributions between baseline (no drift variability) and non-zero drift variability (sv) conditions, showing how sv increases the right-skew of RT distributions"}
 params_sv <- baseline_params_vignette # sv=0 in baseline_params_vignette
 params_sv_effect <- baseline_params_vignette
 params_sv_effect$sv <- 0.20 # Introduce drift variability
@@ -303,7 +303,7 @@ Let's compare our unbiased baseline (mean_z = 0.25 for a = 0.5) with scenarios w
 
 **Bias Towards Lower Boundary (Choice 0):**
 
-```{r sim_bias_lower_z_interpret}
+```{r sim_bias_lower_z_interpret, fig.alt="Comparison of reaction time distributions between baseline and lower starting point bias conditions, showing more frequent and faster responses for the lower boundary when starting closer to it"}
 params_bias_lower <- baseline_params_vignette
 params_bias_lower$mean_z <- 0.1 # For a=1.0
 
@@ -322,7 +322,7 @@ plot_ddm_parameter_comparison(
 
 **Bias Towards Upper Boundary (Choice 1):**
 
-```{r sim_bias_upper_z_interpret}
+```{r sim_bias_upper_z_interpret, fig.alt="Comparison of reaction time distributions between baseline and upper starting point bias conditions, showing more frequent and faster responses for the upper boundary when starting closer to it"}
 params_bias_upper <- baseline_params_vignette
 params_bias_upper$mean_z <- 0.4 # For a=1.0
 

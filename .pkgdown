@@ -1,0 +1,5 @@
+url: https://dgknzts.github.io/drift-diffusion-model-basics-in-R/
+development:
+  mode: auto
+  version_label: default
+destination: docs 

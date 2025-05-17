@@ -32,6 +32,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="active nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/shiny_app.html">Interactive Demo</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -321,7 +322,7 @@ of choices and a right-skewed RT distribution.</p>
 <span>        ylab <span class="op">=</span> <span class="st">"Proportion"</span>,</span>
 <span>        names.arg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Boundary (0)"</span>, <span class="st">"Upper Boundary (1)"</span><span class="op">)</span>, <span class="co"># More descriptive labels</span></span>
 <span>        col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"lightblue"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-2-1.png" width="700" style="display: block; margin: auto;"></p>
+<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-2-1.png" alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation" width="700" style="display: block; margin: auto;"></p>
 <p>With a positive drift (v = 0.15), we expect more choices for the
 upper boundary (Choice 1).</p>
 </div>
@@ -372,7 +373,7 @@ distributions.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No valid trials with RTs to plot (all may have hit max_decision_time)."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" width="700" style="display: block; margin: auto;"></p>
+<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times" width="700" style="display: block; margin: auto;"></p>
 <pre><code><span><span class="co">## [1] "Mean RTs:"</span></span>
 <span><span class="co">## [1] 1.589921 1.615491</span></span>
 <span><span class="co">## [1] "Median RTs:"</span></span>
@@ -454,57 +455,7 @@ scenario that can produce varied outcomes.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No path data to plot."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_path_plotting-1.png" width="768" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Display the first few rows of the combined path data</span></span>
-<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">)</span>, caption <span class="op">=</span> <span class="st">"Sample of combined path data for plotting."</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
-<caption>Sample of combined path data for plotting.</caption>
-<thead><tr class="header">
-<th align="right">time_s</th>
-<th align="right">evidence</th>
-<th align="left">trial_id</th>
-<th align="right">final_choice</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="right">0.00</td>
-<td align="right">0.5000000</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.01</td>
-<td align="right">0.4311612</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="right">0.02</td>
-<td align="right">0.4583268</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.03</td>
-<td align="right">0.4664400</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="right">0.04</td>
-<td align="right">0.4251076</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.05</td>
-<td align="right">0.4055165</td>
-<td align="left">Trial 1</td>
-<td align="right">0</td>
-</tr>
-</tbody>
-</table>
+<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_path_plotting-1.png" alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries" width="768" style="display: block; margin: auto;"></p>
 <div class="section level3">
 <h3 id="visualizing-evidence-accumulation-paths-with-helper-function">Visualizing Evidence Accumulation Paths with Helper Function<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths-with-helper-function"></a>
 </h3>
@@ -513,7 +464,7 @@ function `plot_ddm_paths_with_histograms()`. This function will display
 several trial paths, decision boundaries, the starting point, and the
 average drift line. It will also generate separate plots for the RT
 distributions at each boundary.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Parameters for path visualization</span></span>
 <span><span class="va">path_plot_params_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  v <span class="op">=</span> <span class="fl">0.05</span>,    <span class="co"># Moderate positive drift</span></span>
@@ -552,7 +503,7 @@ distributions at each boundary.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Not enough valid trials with diverse outcomes to generate combined plot."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-3-1.png" width="480" style="display: block; margin: auto;"></p>
+<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-3-1.png" alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times" width="480" style="display: block; margin: auto;"></p>
 </div>
 </div>
 <div class="section level2">

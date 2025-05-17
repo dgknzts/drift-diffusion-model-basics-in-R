@@ -1,0 +1,62 @@
+---
+title: "Interactive DDM Demo"
+description: "Interactive Shiny app to explore DDM parameters and visualize their effects."
+order: 5
+author: "Dogukan Nami Oztas"
+date: "2025-05-16"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Interactive DDM Demo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
+```
+
+## Interactive Drift Diffusion Model Demo
+
+This interactive Shiny application allows you to explore the Drift Diffusion Model (DDM) by adjusting its parameters and visualizing the effects in real-time.
+
+### Features
+
+- Adjust core DDM parameters (drift rate, threshold separation, starting point, etc.)
+- Modify across-trial parameter variability (sv, sz, st0)
+- Visualize evidence accumulation paths
+- Explore reaction time distributions
+- See parameter effects instantly
+
+### Launch the App
+
+Click the button below to launch the interactive DDM demonstration app:
+
+<center>
+<a href="https://dgknzts.shinyapps.io/DDM-Basics/" class="btn btn-primary btn-lg" style="background-color:#428bca; color:white; padding:15px 25px; text-decoration:none; border-radius:6px; font-weight:bold; display:inline-block; margin:20px 0;">Launch Interactive DDM Demo</a>
+</center>
+
+### Using the App
+
+The app interface is divided into several sections:
+
+1. **Parameter Controls** - Use the sliders to adjust DDM parameters
+2. **Simulation Display** - View evidence accumulation paths and RT distributions
+3. **Parameter Distribution** - See the distribution of trial-specific parameters when using variability
+
+Experiment with different parameter combinations to develop an intuitive understanding of how each parameter affects decision outcomes and reaction times.
+
+### Relation to Tutorial Vignettes
+
+This interactive app complements the conceptual explanations provided in the tutorial vignettes:
+
+- **Introduction to Random Walks** - Foundation for understanding evidence accumulation
+- **Simulating the DDM** - Basic principles implemented in the app
+- **Parameter Variability** - Explore how variability affects outcomes
+- **Interpreting Parameters** - See the real-time effects of parameter changes
+
+The app serves as a hands-on learning tool that brings the theoretical concepts to life through direct interaction and visualization. 
