@@ -4,15 +4,16 @@ template:
 navbar:
   structure:
     left:
-      - home
-      - reference
       - articles
-      - news
 
 articles:
-  - title: "Getting Started"
+  - title: "Tutorials"
     contents:
-      - 01_introduction_to_random_walks
-      - 02_simulating_diffusion_model
-      - 03_parameter_variability_in_ddm
-      - 04_interpreting_ddm_parameters 
+      - "01_introduction_to_random_walks"
+      - "02_simulating_diffusion_model" 
+      - "03_parameter_variability_in_ddm"
+      - "04_interpreting_ddm_parameters"
+
+development:
+  mode: auto
+  version_label: default 

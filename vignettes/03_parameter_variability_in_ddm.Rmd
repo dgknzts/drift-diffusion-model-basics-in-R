@@ -1,19 +1,12 @@
 ---
-layout: tutorial
 title: "Exploring Across-Trial Parameter Variability in the DDM"
 description: "Simulate and visualize the effects of parameter variability in the DDM."
 order: 3
 author: "Dogukan Nami Oztas"
 date: "2025-05-16"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: united
-    highlight: tango
-    df_print: kable
+output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{3. Parameter Variability in DDM}
+  %\VignetteIndexEntry{Exploring Across-Trial Parameter Variability in the DDM}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

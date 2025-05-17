@@ -1,19 +1,12 @@
 ---
-layout: tutorial
 title: "Simulating the Diffusion Decision Model (DDM)"
 description: "How to simulate the DDM in R and understand its parameters."
 order: 2
 author: "Dogukan Nami Oztas"
 date: "2025-05-16"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: united
-    highlight: tango
-    df_print: kable
+output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{2. Simulating the Diffusion Decision Model}
+  %\VignetteIndexEntry{Simulating the Diffusion Decision Model (DDM)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

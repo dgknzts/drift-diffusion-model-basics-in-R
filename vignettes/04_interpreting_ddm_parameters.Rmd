@@ -1,19 +1,12 @@
 ---
-layout: tutorial
 title: "Interpreting DDM Parameters and Their Effects"
 description: "Understand and visualize the effects of DDM parameters on decisions and RTs."
 order: 4
 author: "Dogukan Nami Oztas"
 date: "2025-05-16"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: united
-    highlight: tango
-    df_print: kable
+output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{4. Interpreting DDM Parameters}
+  %\VignetteIndexEntry{Interpreting DDM Parameters and Their Effects}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

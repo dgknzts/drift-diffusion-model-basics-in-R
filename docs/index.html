@@ -31,7 +31,6 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="articles/index.html">Articles</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -46,38 +45,113 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="ddm-basics-in-r">DDM Basics in R<a class="anchor" aria-label="anchor" href="#ddm-basics-in-r"></a>
+<div class="page-header"><h1 id="diffusion-decision-model-ddm-basics-in-r---from-scratch">Diffusion Decision Model (DDM) Basics in R - From Scratch<a class="anchor" aria-label="anchor" href="#diffusion-decision-model-ddm-basics-in-r---from-scratch"></a>
 </h1></div>
-<p>Welcome to the DDM Basics in R documentation! This guide will walk you through the fundamentals of Diffusion Decision Models using R.</p>
+<p>This repository provides a resource for understanding and implementing the fundamental principles of the Diffusion Decision Model (DDM) from scratch using the R programming language. The goal is to present the underlying logic and simulation of the model in the simplest and most accessible way.</p>
+<p>This work is heavily inspired by and aims to replicate concepts from “An Introduction to the Diffusion Model of Decision-Making” by Philip L. Smith and Roger Ratcliff.</p>
+<div class="section level2">
+<h2 id="contents">Contents<a class="anchor" aria-label="anchor" href="#contents"></a>
+</h2>
+<ul>
+<li>
+<strong>R Functions (<code>R/</code>):</strong>
+<ul>
+<li>Simulators for simple Random Walks.</li>
+<li>Simulators for the basic Diffusion Model.</li>
+<li>Functions to demonstrate the effects of DDM parameters.</li>
+<li>Helper functions for visualizing results.</li>
+</ul>
+</li>
+<li>
+<strong>Vignettes/Tutorials (<code>vignettes/</code>):</strong>
+<ul>
+<li>Introduction to random walks and their simulation.</li>
+<li>Simulating the diffusion model and its logic.</li>
+<li>Understanding DDM parameters (drift rate, threshold, starting point, etc.) and their impact.</li>
+<li>How to plot DDM outputs (RT distributions, choice probabilities).</li>
+</ul>
+</li>
+<li>
+<strong>Example Scripts (<code>scripts/</code>):</strong>
+<ul>
+<li>Running simple simulations using the provided functions.</li>
+<li>Generating example plots.</li>
+</ul>
+</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
 </h2>
-<p>The documentation is organized into several sections:</p>
 <ol style="list-style-type: decimal">
-<li><a href="vignettes/01_introduction_to_random_walks.html">Introduction to Random Walks</a></li>
-<li><a href="vignettes/02_simulating_diffusion_model.html">Simulating Diffusion Model</a></li>
-<li><a href="vignettes/03_parameter_variability_in_ddm.html">Parameter Variability in DDM</a></li>
-<li><a href="vignettes/04_interpreting_ddm_parameters.html">Interpreting DDM Parameters</a></li>
+<li>Clone this repository: <code>git clone https://github.com/yourusername/DDM_Basics_R.git</code>
+</li>
+<li>Open <code>DDM_Basics_R.Rproj</code> in RStudio.</li>
+<li>Start by exploring the R Markdown files in the <code>vignettes/</code> folder.</li>
+<li>Run the example scripts in the <code>scripts/</code> folder to see how the functions are used.</li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="interactive-shiny-app">Interactive Shiny App<a class="anchor" aria-label="anchor" href="#interactive-shiny-app"></a>
-</h2>
-<p>Explore DDM parameters interactively! Instructions to run the app locally can be found in the <a href="README.html#interactive-ddm-explorer-shiny-app-sparkles">README</a>.</p>
-</div>
-<div class="section level2">
-<h2 id="about-this-guide">About This Guide<a class="anchor" aria-label="anchor" href="#about-this-guide"></a>
-</h2>
-<p>This documentation provides a comprehensive introduction to Diffusion Decision Models (DDM) using R. It covers both theoretical concepts and practical implementations, making it suitable for both beginners and those looking to deepen their understanding of DDM.</p>
-</div>
-<div class="section level2">
-<h2 id="quick-links">Quick Links<a class="anchor" aria-label="anchor" href="#quick-links"></a>
+<h2 id="key-ddm-parameters-implemented">Key DDM Parameters Implemented<a class="anchor" aria-label="anchor" href="#key-ddm-parameters-implemented"></a>
 </h2>
 <ul>
-<li><a href="https://github.com/dgknzts/drift-diffusion-model-basics-in-R" class="external-link">GitHub Repository</a></li>
-<li><a href="vignettes/01_introduction_to_random_walks.html#installation">Installation Guide</a></li>
-<li><a href="vignettes/02_simulating_diffusion_model.html#examples">Examples</a></li>
+<li>
+<code>v</code>: Drift rate (mean rate of evidence accumulation)</li>
+<li>
+<code>a</code>: Threshold separation (boundary separation)</li>
+<li>
+<code>z</code>: Starting point of evidence accumulation (bias)</li>
+<li>
+<code>ter</code> (or <code>t0</code>): Non-decision time (encoding and response execution time)</li>
+<li>
+<code>s</code>: Within-trial noise (standard deviation of the normally distributed increments, often fixed to 0.1)
+<ul>
+<li><em>(Parameter variability like <code>sv</code>, <code>sz</code>, <code>st</code> can be added as an extension)</em></li>
 </ul>
+</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="interactive-ddm-explorer-shiny-app-">Interactive DDM Explorer (Shiny App) ✨<a class="anchor" aria-label="anchor" href="#interactive-ddm-explorer-shiny-app-"></a>
+</h2>
+<p>This project now includes an interactive Shiny application (<code>app.R</code>) that allows you to explore the Diffusion Decision Model (DDM) with across-trial parameter variability in real-time!</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li>Adjust mean DDM parameters (<code>v</code>, <code>a</code>, <code>z</code>, <code>s</code>, <code>ter</code>).</li>
+<li>Control across-trial variability parameters (<code>sv</code>, <code>sz</code>, <code>st0</code>).</li>
+<li>Simulate DDM trials and instantly visualize:
+<ul>
+<li>Evidence accumulation paths.</li>
+<li>Flanking RT histograms for upper and lower boundary responses.</li>
+<li>Distributions of the sampled trial-specific parameters.</li>
+<li>Summary statistics (choice proportions, RT means/medians).</li>
+</ul>
+</li>
+</ul>
+<p><strong>How to Run the App Locally:</strong></p>
+<ol style="list-style-type: decimal">
+<li>Ensure you have R and RStudio installed.</li>
+<li>Clone this repository to your local machine: <code>bash     git clone https://github.com/YourUsername/diffusion-decision-models-basics-in-R.git     cd diffusion-decision-models-basics-in-R</code>
+</li>
+<li>Open the <code>DDM_Basics_R.Rproj</code> file in RStudio.</li>
+<li>Install the required R packages if you haven’t already. The app uses <code>shiny</code>, <code>ggplot2</code>, <code>dplyr</code>, and <code>patchwork</code>. <code>R     # Run this in the RStudio console:     install.packages(c("shiny", "ggplot2", "dplyr", "patchwork"))</code>
+</li>
+<li>Open the <code>app.R</code> file in RStudio.</li>
+<li>Click the “Run App” button that appears at the top of the R script editor, or type <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> in the R console.</li>
+</ol>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<ul>
+<li>Smith, P. L., &amp; Ratcliff, R. (2024). An Introduction to the Diffusion Model of Decision-Making. <em>In B. U. Forstmann &amp; B. M. Turner (Eds.), An Introduction to Model-Based Cognitive Neuroscience.</em> (This is the primary chapter this repo aims to illustrate).</li>
+<li>Ratcliff, R. (1978). A theory of memory retrieval. <em>Psychological Review, 85</em>(2), 59–108.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
+<p>This project is licensed under the MIT License - see the <code>LICENSE</code> file for details.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
