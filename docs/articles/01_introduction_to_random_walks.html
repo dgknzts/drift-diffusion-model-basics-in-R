@@ -193,9 +193,141 @@ choice, and rt for each simulated trial.</p>
 </h4>
 <p>We can calculate the proportion of choices for the upper and lower
 thresholds.</p>
-<p>```</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Filter out NA choices (if any trials hit max_steps)</span></span>
+<span><span class="va">valid_rw_choices</span> <span class="op">&lt;-</span> <span class="va">rw_data</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">valid_rw_choices</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">choice_summary</span> <span class="op">&lt;-</span> <span class="va">valid_rw_choices</span> <span class="op">%&gt;%</span></span>
+<span>    <span class="fu">count</span><span class="op">(</span><span class="va">choice</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>    <span class="fu">mutate</span><span class="op">(</span></span>
+<span>      proportion <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>,</span>
+<span>      choice_label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Threshold (-1)"</span>, <span class="st">"Upper Threshold (1)"</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Choice Proportions:"</span><span class="op">)</span></span>
+<span>  <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu">select</span><span class="op">(</span><span class="va">choice_summary</span>, <span class="va">choice_label</span>, <span class="va">n</span>, <span class="va">proportion</span><span class="op">)</span>, </span>
+<span>               col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Choice Outcome"</span>, <span class="st">"Count (N)"</span>, <span class="st">"Proportion"</span><span class="op">)</span>,</span>
+<span>               caption <span class="op">=</span> <span class="st">"Summary of Choice Proportions"</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Bar plot of counts or proportions</span></span>
+<span>  <span class="va">p_choice</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">choice_summary</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">choice_label</span>, y <span class="op">=</span> <span class="va">proportion</span>, fill <span class="op">=</span> <span class="va">choice_label</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_bar</span><span class="op">(</span>stat <span class="op">=</span> <span class="st">"identity"</span>, color <span class="op">=</span> <span class="st">"black"</span>, alpha <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_text</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>label <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span><span class="op">(</span><span class="va">proportion</span>, accuracy <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span>, vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.3</span>, size <span class="op">=</span> <span class="fl">3.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">scale_y_continuous</span><span class="op">(</span>labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent_format</a></span><span class="op">(</span>accuracy <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>, expand <span class="op">=</span> <span class="fu">expansion</span><span class="op">(</span>mult<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span></span>
+<span>      title <span class="op">=</span> <span class="st">"Choice Proportions in Random Walk"</span>,</span>
+<span>      x <span class="op">=</span> <span class="st">"Outcome"</span>,</span>
+<span>      y <span class="op">=</span> <span class="st">"Proportion of Trials"</span></span>
+<span>    <span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme_minimal</span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">11</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span> <span class="co"># Fill color is redundant with x-axis</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p_choice</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No valid choices to summarize (all trials may have resulted in NA choice)."</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] "Choice Proportions:"</span></span></code></pre>
+<p><img src="01_introduction_to_random_walks_files/figure-html/visualize_choice_proportions-1.png" width="700" style="display: block; margin: auto;"></p>
+<p>With a slight positive drift (drift = 0.05), we typically expect a
+higher proportion of choices for the upper threshold (Choice 1).</p>
+</div>
+<div class="section level4">
+<h4 id="reaction-time-rt-distributions">
+<strong>2. Reaction Time (RT) Distributions</strong><a class="anchor" aria-label="anchor" href="#reaction-time-rt-distributions"></a>
+</h4>
+<p>The distribution of reaction times (number of steps taken to reach a
+threshold) is another key output.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Filter out NA RTs (if any trials hit max_steps and thus had NA choice/rt)</span></span>
+<span><span class="va">valid_rw_rts</span> <span class="op">&lt;-</span> <span class="va">rw_data</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">&amp;</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>                 <span class="fu">mutate</span><span class="op">(</span>choice_label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Threshold (-1)"</span>, <span class="st">"Upper Threshold (1)"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">valid_rw_rts</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">p_rts</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">valid_rw_rts</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">rt</span>, fill <span class="op">=</span> <span class="va">choice_label</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_histogram</span><span class="op">(</span>binwidth <span class="op">=</span> <span class="fl">5</span>, alpha <span class="op">=</span> <span class="fl">0.7</span>, position <span class="op">=</span> <span class="st">"identity"</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span><span class="va">choice_label</span>, scales <span class="op">=</span> <span class="st">"free_y"</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span> <span class="co"># Separate plots for each choice</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span></span>
+<span>      title <span class="op">=</span> <span class="st">"Random Walk RT Distributions"</span>,</span>
+<span>      x <span class="op">=</span> <span class="st">"Reaction Time (Number of Steps)"</span>,</span>
+<span>      y <span class="op">=</span> <span class="st">"Frequency (Count)"</span>,</span>
+<span>      fill <span class="op">=</span> <span class="st">"Choice Outcome"</span></span>
+<span>    <span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme_minimal</span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">11</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p_rts</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Summary statistics for RTs</span></span>
+<span>  <span class="va">rt_summary</span> <span class="op">&lt;-</span> <span class="va">valid_rw_rts</span> <span class="op">%&gt;%</span></span>
+<span>    <span class="fu">group_by</span><span class="op">(</span><span class="va">choice_label</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>    <span class="fu">summarise</span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="fu">n</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      Mean_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>      Median_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>      SD_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>      Min_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">rt</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>      Max_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">rt</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>      .groups <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">rt_summary</span>, caption <span class="op">=</span> <span class="st">"Summary Statistics for RTs by Choice Outcome"</span>, digits <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>  </span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No valid RTs to plot or summarize (all trials may have resulted in NA RTs)."</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><img src="01_introduction_to_random_walks_files/figure-html/visualize_rt_distributions-1.png" width="700" style="display: block; margin: auto;"></p>
+<table class="table">
+<caption>Summary Statistics for RTs by Choice Outcome</caption>
+<thead><tr class="header">
+<th align="left">choice_label</th>
+<th align="right">N</th>
+<th align="right">Mean_RT</th>
+<th align="right">Median_RT</th>
+<th align="right">SD_RT</th>
+<th align="right">Min_RT</th>
+<th align="right">Max_RT</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Lower Threshold (-1)</td>
+<td align="right">103</td>
+<td align="right">89.1</td>
+<td align="right">72</td>
+<td align="right">66.3</td>
+<td align="right">13</td>
+<td align="right">404</td>
+</tr>
+<tr class="even">
+<td align="left">Upper Threshold (1)</td>
+<td align="right">897</td>
+<td align="right">78.8</td>
+<td align="right">63</td>
+<td align="right">56.3</td>
+<td align="right">9</td>
+<td align="right">415</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Observations:</strong></p>
+<ul>
+<li><p>The RT distributions are typically positively skewed (a long tail
+towards slower RTs).</p></li>
+<li><p>The mean RT for the more frequent choice (due to drift) might be
+faster or slower than the less frequent one, depending on other
+parameters.</p></li>
+</ul>
 </div>
 </div>
+</div>
+<div class="section level2">
+<h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
+</h2>
+<p>This vignette provided a basic introduction to simulating a simple
+one-dimensional random walk in R. We explored how to simulate individual
+trials and entire experiments, and how to analyze fundamental outputs
+like choice proportions and RT distributions. Understanding the random
+walk is a stepping stone to grasping the more nuanced Diffusion Decision
+Model, which operates in continuous time and incorporates additional
+parameters to model human decision-making more accurately.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

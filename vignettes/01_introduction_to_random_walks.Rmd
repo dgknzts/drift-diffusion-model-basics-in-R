@@ -97,4 +97,92 @@ The resulting rw_data is a data frame containing the trial number, choice, and r
 
 We can calculate the proportion of choices for the upper and lower thresholds.
 
-\`\`\`
+```{r visualize_choice_proportions}
+# Filter out NA choices (if any trials hit max_steps)
+valid_rw_choices <- rw_data %>% filter(!is.na(choice))
+
+if(nrow(valid_rw_choices) > 0) {
+  choice_summary <- valid_rw_choices %>%
+    count(choice) %>%
+    mutate(
+      proportion = n / sum(n),
+      choice_label = factor(choice, levels = c(-1, 1), labels = c("Lower Threshold (-1)", "Upper Threshold (1)"))
+    )
+
+  print("Choice Proportions:")
+  knitr::kable(select(choice_summary, choice_label, n, proportion), 
+               col.names = c("Choice Outcome", "Count (N)", "Proportion"),
+               caption = "Summary of Choice Proportions", digits = 3)
+
+  # Bar plot of counts or proportions
+  p_choice <- ggplot(choice_summary, aes(x = choice_label, y = proportion, fill = choice_label)) +
+    geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+    geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), vjust = -0.3, size = 3.5) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1), expand = expansion(mult=c(0, 0.05))) +
+    labs(
+      title = "Choice Proportions in Random Walk",
+      x = "Outcome",
+      y = "Proportion of Trials"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "none") # Fill color is redundant with x-axis
+  print(p_choice)
+} else {
+  print("No valid choices to summarize (all trials may have resulted in NA choice).")
+}
+```
+
+With a slight positive drift (drift = 0.05), we typically expect a higher proportion of choices for the upper threshold (Choice 1).
+
+#### **2. Reaction Time (RT) Distributions**
+
+The distribution of reaction times (number of steps taken to reach a threshold) is another key output.
+
+```{r visualize_rt_distributions}
+# Filter out NA RTs (if any trials hit max_steps and thus had NA choice/rt)
+valid_rw_rts <- rw_data %>% filter(!is.na(rt) & !is.na(choice)) %>%
+                 mutate(choice_label = factor(choice, levels = c(-1, 1), labels = c("Lower Threshold (-1)", "Upper Threshold (1)")))
+
+
+if(nrow(valid_rw_rts) > 0) {
+  p_rts <- ggplot(valid_rw_rts, aes(x = rt, fill = choice_label)) +
+    geom_histogram(binwidth = 5, alpha = 0.7, position = "identity", color = "black") +
+    facet_wrap(~choice_label, scales = "free_y", ncol = 1) + # Separate plots for each choice
+    labs(
+      title = "Random Walk RT Distributions",
+      x = "Reaction Time (Number of Steps)",
+      y = "Frequency (Count)",
+      fill = "Choice Outcome"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top")
+  print(p_rts)
+
+  # Summary statistics for RTs
+  rt_summary <- valid_rw_rts %>%
+    group_by(choice_label) %>%
+    summarise(
+      N = n(),
+      Mean_RT = round(mean(rt, na.rm = TRUE), 1),
+      Median_RT = round(median(rt, na.rm = TRUE), 1),
+      SD_RT = round(sd(rt, na.rm = TRUE), 1),
+      Min_RT = min(rt, na.rm = TRUE),
+      Max_RT = max(rt, na.rm = TRUE),
+      .groups = "drop"
+    )
+  knitr::kable(rt_summary, caption = "Summary Statistics for RTs by Choice Outcome", digits = 1)
+  
+} else {
+  print("No valid RTs to plot or summarize (all trials may have resulted in NA RTs).")
+}
+```
+
+**Observations:**
+
+-   The RT distributions are typically positively skewed (a long tail towards slower RTs).
+
+-   The mean RT for the more frequent choice (due to drift) might be faster or slower than the less frequent one, depending on other parameters.
+
+## Conclusion
+
+This vignette provided a basic introduction to simulating a simple one-dimensional random walk in R. We explored how to simulate individual trials and entire experiments, and how to analyze fundamental outputs like choice proportions and RT distributions. Understanding the random walk is a stepping stone to grasping the more nuanced Diffusion Decision Model, which operates in continuous time and incorporates additional parameters to model human decision-making more accurately.
