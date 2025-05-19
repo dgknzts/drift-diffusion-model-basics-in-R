@@ -5,6 +5,7 @@
 #*.html
 *.pdf
 *.png
+!docs/**/*.png
 *.jpeg
 *.gif
 # OS generated files
