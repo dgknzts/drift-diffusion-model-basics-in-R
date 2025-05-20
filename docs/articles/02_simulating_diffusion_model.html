@@ -75,8 +75,8 @@ boundaries.</p>
 <p>The DDM is essentially a continuous-time version of the random walk
 model we explored in the previous vignette. Instead of discrete steps,
 evidence is assumed to accumulate continuously, influenced by both a
-systematic “drift” (reflecting the quality of stimulus information) and
-random “noise” (reflecting moment-to-moment variability in
+systematic "drift" (reflecting the quality of stimulus information) and
+random "noise" (reflecting moment-to-moment variability in
 processing).</p>
 <p>This vignette will demonstrate how to simulate the DDM using the
 functions created in R/02_diffusion_simulator.R.</p>
@@ -93,7 +93,7 @@ an upper boundary at a.</p>
 <ul>
 <li><p>The average rate of evidence accumulation.</p></li>
 <li><p>A positive v indicates drift towards the upper boundary a (often
-representing the “correct” response for a given stimulus).</p></li>
+representing the "correct" response for a given stimulus).</p></li>
 <li><p>A negative v indicates drift towards the lower boundary
 0.</p></li>
 <li><p>The magnitude of v reflects the quality or strength of the
@@ -115,13 +115,13 @@ responses (speed-accuracy tradeoff).</p></li>
 <li>
 <p><strong>z (Starting Point):</strong></p>
 <ul>
-<li><p>The initial state of the evidence accumulator, where 0 &lt; z
-&lt; a.</p></li>
+<li><p>The initial state of the evidence accumulator, where 0 < z
+< a.</p></li>
 <li><p>Represents an initial bias towards one of the responses.</p></li>
 <li><p>z = a/2 indicates an unbiased starting point.</p></li>
-<li><p>z &gt; a/2 indicates a bias towards the upper boundary
+<li><p>z > a/2 indicates a bias towards the upper boundary
 a.</p></li>
-<li><p>z &lt; a/2 indicates a bias towards the lower boundary
+<li><p>z < a/2 indicates a bias towards the lower boundary
 0.</p></li>
 </ul>
 </li>
@@ -183,10 +183,10 @@ lower boundary 0 is reached.</p>
 <div class="section level2">
 <h2 id="simulating-a-ddm-experiment">Simulating a DDM Experiment<a class="anchor" aria-label="anchor" href="#simulating-a-ddm-experiment"></a>
 </h2>
-<p>To understand the model’s predictions for RT distributions and choice
+<p>To understand the model's predictions for RT distributions and choice
 probabilities, we simulate many trials using
 simulate_diffusion_experiment().</p>
-<p>Let’s simulate an experiment with parameters that should yield a mix
+<p>Let's simulate an experiment with parameters that should yield a mix
 of choices and a right-skewed RT distribution.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">202</span><span class="op">)</span></span>
@@ -322,7 +322,7 @@ of choices and a right-skewed RT distribution.</p>
 <span>        ylab <span class="op">=</span> <span class="st">"Proportion"</span>,</span>
 <span>        names.arg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Boundary (0)"</span>, <span class="st">"Upper Boundary (1)"</span><span class="op">)</span>, <span class="co"># More descriptive labels</span></span>
 <span>        col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"lightblue"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-2-1.png" alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation" width="700" style="display: block; margin: auto;"></p>
+<img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-2-1.png" alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation" width="700" style="display: block; margin: auto;">
 <p>With a positive drift (v = 0.15), we expect more choices for the
 upper boundary (Choice 1).</p>
 </div>
@@ -373,7 +373,7 @@ distributions.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No valid trials with RTs to plot (all may have hit max_decision_time)."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times" width="700" style="display: block; margin: auto;"></p>
+<img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times" width="700" style="display: block; margin: auto;">
 <pre><code><span><span class="co">## [1] "Mean RTs:"</span></span>
 <span><span class="co">## [1] 1.589921 1.615491</span></span>
 <span><span class="co">## [1] "Median RTs:"</span></span>
@@ -389,15 +389,15 @@ time.</p>
 <div class="section level2">
 <h2 id="visualizing-evidence-accumulation-paths-optional-advanced">Visualizing Evidence Accumulation Paths (Optional Advanced)<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths-optional-advanced"></a>
 </h2>
-<p>To gain a more intuitive understanding of the DDM, it’s helpful to
+<p>To gain a more intuitive understanding of the DDM, it's helpful to
 visualize the actual paths of evidence accumulation on a few example
-trials. This is similar to Figure 1 in “An Introduction to the Diffusion
-Model of Decision-Making” by Smith and Ratcliff.</p>
-<p>We’ve created a modified function,
+trials. This is similar to Figure 1 in "An Introduction to the Diffusion
+Model of Decision-Making" by Smith and Ratcliff.</p>
+<p>We've created a modified function,
 `simulate_diffusion_trial_with_path()`, which, in addition to the choice
 and RT, also returns the history of evidence levels over time for a
 single trial.</p>
-<p>Let’s simulate a few trials and plot their paths. We’ll aim for a
+<p>Let's simulate a few trials and plot their paths. We'll aim for a
 scenario that can produce varied outcomes.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path_params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -455,11 +455,11 @@ scenario that can produce varied outcomes.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No path data to plot."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_path_plotting-1.png" alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries" width="768" style="display: block; margin: auto;"></p>
+<img src="02_simulating_diffusion_model_files/figure-html/ddm_path_plotting-1.png" alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries" width="768" style="display: block; margin: auto;">
 <div class="section level3">
 <h3 id="visualizing-evidence-accumulation-paths-with-helper-function">Visualizing Evidence Accumulation Paths with Helper Function<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths-with-helper-function"></a>
 </h3>
-<p>To better visualize the DDM process, we’ll use our custom helper
+<p>To better visualize the DDM process, we'll use our custom helper
 function `plot_ddm_paths_with_histograms()`. This function will display
 several trial paths, decision boundaries, the starting point, and the
 average drift line. It will also generate separate plots for the RT
@@ -503,7 +503,7 @@ distributions at each boundary.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Not enough valid trials with diverse outcomes to generate combined plot."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-3-1.png" alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times" width="480" style="display: block; margin: auto;"></p>
+<img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-3-1.png" alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times" width="480" style="display: block; margin: auto;">
 </div>
 </div>
 <div class="section level2">

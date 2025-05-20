@@ -1,7 +1,7 @@
 ---
 title: "Interactive DDM Demo"
 description: "Interactive Shiny app to explore DDM parameters and visualize their effects."
-order: 5
+order: 0
 author: "Dogukan Nami Oztas"
 date: "2025-05-16"
 output: rmarkdown::html_vignette
@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
   echo = TRUE,
   message = FALSE,
   warning = FALSE,
-  fig.align = 'center'
+  fig.align = "center"
 )
 ```
 

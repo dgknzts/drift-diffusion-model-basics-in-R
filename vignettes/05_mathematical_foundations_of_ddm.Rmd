@@ -152,7 +152,7 @@ comp_params_math <- list(
   ter = 0, # Not relevant for choice probability, set to 0 for this sim
   dt = 0.001
 )
-n_sim_math_comp <- 20000 # Use a large number of trials for stable estimate
+n_sim_math_comp <- 2000 # Use a large number of trials for stable estimate
 
 # Analytical Prediction
 p_upper_analytical_val <- analytical_p_upper(
