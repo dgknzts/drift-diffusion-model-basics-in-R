@@ -1,0 +1,354 @@
+---
+title: "Optimization Methods in DDM Fitting: Finding the Best Parameters"
+author: "Dogukan Nami Oztas"
+date: "2025-05-21"
+order: 8
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united 
+    highlight: tango
+    df_print: kable
+vignette: >
+  %\VignetteIndexEntry{9. Optimization in DDM Fitting}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+# Source functions needed for the DDM fitting example later
+source("../R/03_ddm_simulator_variable.R")
+source("../R/04_ddm_fitting_utils.R")
+```
+
+## Introduction: From Simulating Models to Understanding Data
+
+In previous vignettes, we've explored how to simulate the Diffusion Decision Model (DDM) given a known set of parameters. This is crucial for understanding how the model behaves and how its parameters influence outcomes. However, a primary goal in computational modeling is often the inverse: we have observed behavioral data (choices and reaction times from an experiment), and we want to infer the underlying DDM parameters that most likely generated that data. This process is called **model fitting** or **parameter estimation**.
+
+At the heart of model fitting lies **optimization**: finding a set of parameter values that makes the model's predictions align as closely as possible with the observed data. This vignette will:
+
+1.  Introduce the concept of an **objective function** to quantify "goodness of fit."
+
+2.  Demonstrate a **simple manual grid search** to illustrate the basic principle of optimization for a single parameter.
+
+3.  Discuss **automated optimization algorithms** (like R's optim()) for more complex, multi-parameter fitting.
+
+4.  Illustrate a **parameter recovery** exercise using optim() to try and retrieve known parameters.
+
+5.  Briefly touch upon common challenges in optimization, drawing insights from resources like "Ten Simple Rules for Computational Modeling of Behavioral Data" (Wilson & Collins, 2019, eLife).
+
+## The Objective Function: Measuring How Well Parameters Fit
+
+To guide any optimization process, whether manual or automated, we need a way to numerically evaluate how well a given set of candidate DDM parameters explains our data. This measure is called an **objective function** (also known as a loss function, cost function, or error function).
+
+-   **Input:** A set of candidate DDM parameters (e.g., a specific mean_v, a, mean_z, etc.).
+
+-   **Process:**
+
+    1.  The DDM is simulated using these candidate parameters, generating "model-predicted" or "fake" behavioral data.
+
+    2.  Key summary statistics are calculated from this simulated data (e.g., choice proportions, RT quantiles for correct and error responses).
+
+    3.  These simulated statistics are compared to the same summary statistics calculated from our actual experimental data (or, in a parameter recovery exercise, "target" data generated with known parameters).
+
+-   **Output:** A single number representing the **discrepancy** or "badness of fit." A lower number means the candidate parameters are doing a better job of reproducing the target data characteristics.
+
+Our project uses the calculate_ddm_summary_stats() function (from R/04_ddm_fitting_utils.R) to get these statistics and ddm_objective_function() to compute the discrepancy, often as a Sum of Squared Differences (SSD). The goal of optimization is to **minimize** this objective function value.
+
+## A Simple Manual "Optimization": Grid Search for Mean Drift Rate (mean_v)
+
+Let's start with a hands-on illustration. We'll try to find the best value for a single DDM parameter, mean_v, by manually testing a few candidate values and seeing which one produces data most similar to a "target" dataset that we generate with a known mean_v.
+
+### **1. Generate Target Data (with a known mean_v)**
+
+We simulate a target dataset. We'll pretend we don't know the mean_v that generated it.
+
+```{r generate_target_for_manual_search}
+# True mean_v for our target data in this manual search example
+true_manual_mean_v_val <- 0.25
+n_trials_manual_target_val <- 3000
+
+# Other parameters are "known" and fixed for this simple search
+fixed_params_manual_search <- list(
+  a = 1.0,
+  mean_z = 0.5, # a/2
+  s = 0.1,
+  mean_ter = 0.2,
+  sv = 0.0, # No across-trial variability for simplicity here
+  sz = 0.0,
+  st0 = 0.0,
+  dt = 0.001
+)
+
+cat(paste("Simulating TARGET data with true mean_v =", true_manual_mean_v_val, "\n"))
+set.seed(505) # For reproducibility
+target_data_manual_args <- c(list(n_trials = n_trials_manual_target_val, mean_v = true_manual_mean_v_val),
+                             fixed_params_manual_search)
+target_data_manual_for_search <- do.call(simulate_diffusion_experiment_variable, target_data_manual_args)
+target_stats_manual_search <- calculate_ddm_summary_stats(target_data_manual_for_search)
+
+cat("Target Summary Stats (P(Correct) and Median RTs for manual search):\n")
+print(round(target_stats_manual_search[c("p_correct", "rt_correct_q50", "rt_error_q50")], 3))
+```
+
+### **2. Define Candidate Values for mean_v and Search**
+
+We'll test a sequence of mean_v values. For each, we simulate data, get stats, and calculate the error score (SSD) against the target stats.
+
+```{r manual_grid_search_mean_v}
+candidate_mean_vs <- seq(0.05, 0.45, by = 0.005) # A range of v values to test
+n_sim_per_candidate <- 500 # Trials for each candidate simulation (can be lower than target for speed)
+
+search_results <- data.frame(
+  candidate_v = numeric(),
+  sim_p_correct = numeric(),
+  sim_median_rt_correct = numeric(),
+  error_score = numeric()
+)
+
+cat("Performing manual grid search for mean_v...\n")
+for (v_test in candidate_mean_vs) {
+  cat(paste("Testing mean_v =", v_test, "... "))
+  current_params_manual <- fixed_params_manual
+  current_params_manual$mean_v <- v_test # Set the candidate v
+
+  set.seed(666) # Use same seed for all candidate sims for fair comparison of v effect
+  sim_data_candidate_list_args <- c(list(n_trials = n_sim_per_candidate), current_params_manual)
+  sim_data_candidate <- do.call(simulate_diffusion_experiment_variable, sim_data_candidate_list_args)
+  
+  # Only proceed if simulation produced some data
+  if (nrow(sim_data_candidate) > 0 && any(!is.na(sim_data_candidate$choice))) {
+    stats_candidate <- calculate_ddm_summary_stats(sim_data_candidate)
+
+    # Calculate SSD (focus on P(Correct) and median RTs for simplicity here)
+    # Ensure names match and handle NAs if a stat isn't available
+    target_subset <- target_stats_manual[c("p_correct", "rt_correct_q50", "rt_error_q50")]
+    candidate_subset <- stats_candidate[c("p_correct", "rt_correct_q50", "rt_error_q50")]
+    
+    # Only compare where both are non-NA
+    valid_idx <- !is.na(target_subset) & !is.na(candidate_subset)
+    if(sum(valid_idx) > 0) {
+        error <- sum((target_subset[valid_idx] - candidate_subset[valid_idx])^2)
+    } else {
+        error <- Inf # Assign large error if no comparable stats
+    }
+
+    search_results <- rbind(search_results, data.frame(
+      candidate_v = v_test,
+      sim_p_correct = ifelse("p_correct" %in% names(stats_candidate), stats_candidate["p_correct"], NA),
+      sim_median_rt_correct = ifelse("rt_correct_q50" %in% names(stats_candidate), stats_candidate["rt_correct_q50"], NA),
+      error_score = error
+    ))
+    cat(paste("Error =", round(error, 5), "\n"))
+  } else {
+    cat("Simulation with mean_v =", v_test, "produced no valid data.\n")
+    search_results <- rbind(search_results, data.frame(
+      candidate_v = v_test, sim_p_correct = NA, sim_median_rt_correct = NA, error_score = Inf
+    ))
+  }
+}
+
+cat("\nGrid Search Results:\n")
+kable(search_results[order(search_results$error_score), ], digits = 4, caption = "Manual Grid Search Results for mean_v")
+
+best_v_manual <- search_results$candidate_v[which.min(search_results$error_score)]
+cat(paste("\nBest candidate mean_v from manual search:", best_v_manual))
+cat(paste("\n(True mean_v was:", true_manual_mean_v, ")\n"))
+```
+
+### **3. Visualizing the Search**
+
+Plotting the error score helps visualize where the minimum (best fit) lies.
+
+```{r plot_manual_search_results, fig.width=6, fig.height=4}
+if(nrow(search_results) > 0 && any(is.finite(search_results$error_score))) {
+  ggplot(search_results, aes(x = candidate_v, y = error_score)) +
+    geom_line(color="steelblue") +
+    geom_point(color="steelblue", size=3) +
+    geom_vline(xintercept = true_manual_mean_v, linetype = "dashed", color = "red") +
+    geom_point(data = filter(search_results, candidate_v == best_v_manual),
+               aes(x = candidate_v, y = error_score), color = "orange", size = 5, shape = 18) +
+    annotate("text", x = true_manual_mean_v, y = max(search_results$error_score, na.rm=T)*0.9, 
+             label = "True Value", color = "red", angle = 90, vjust = -0.5, hjust= 0.5) +
+    annotate("text", x = best_v_manual, y = min(search_results$error_score, na.rm=T), 
+             label = "Best Fit", color = "orange", vjust = 1, hjust = if(best_v_manual > mean(candidate_mean_vs)) 1.2 else -0.2) +
+    labs(
+      title = "Manual Grid Search for mean_v",
+      subtitle = paste("True mean_v =", true_manual_mean_v, "; Best found =", best_v_manual),
+      x = "Candidate mean_v",
+      y = "Error Score (SSD)"
+    ) +
+    theme_minimal()
+} else {
+  cat("Not enough finite error scores to plot search results.\n")
+}
+```
+
+This manual search shows that by evaluating different mean_v values, we can find one that minimizes the error score, getting us closer to the true parameter. However, this is inefficient for multiple parameters.
+
+## Automated Optimization: Searching Systematically with optim()
+
+Our manual grid search for mean_v illustrated the basic idea of optimization: we tried different parameter values and looked for the one that minimized our error score. However, this approach has limitations:
+
+1.  **Inefficiency:** Testing many values for just one parameter is slow. For multiple parameters, the number of combinations to test in a grid search explodes (this is often called the "curse of dimensionality").
+
+2.  **Coarseness:** A grid search only tests discrete points. The true optimal parameter value might lie between our grid points.
+
+3.  **Local vs. Global Optima:** Our simple grid might find a "good" value, but there's no guarantee it's the best possible value globally if the error surface is complex with multiple valleys.
+
+To overcome these limitations, we use **automated optimization algorithms**. These are sophisticated mathematical procedures designed to efficiently search a parameter space to find values that minimize (or maximize) an objective function.
+
+**R's optim() Function: A General-Purpose Optimizer**
+
+R provides a versatile built-in function called optim() for general-purpose optimization. It can implement several different algorithms. For our DDM fitting, we often use methods like "L-BFGS-B," which is well-suited for problems where:
+
+-   We can calculate the value of our objective function for any given set of parameters.
+
+-   We can optionally provide bounds (lower and upper limits) for each parameter, constraining the search to a plausible range.
+
+**How Does optim() Conceptually Work? (Analogy)**
+
+Imagine you are blindfolded on a hilly terrain (this terrain represents our "error surface," where higher points mean worse fit and lower points mean better fit), and your goal is to find the lowest point in a valley.
+
+1.  **Starting Point (par argument in optim()):** You are placed at an initial location (our initial_guesses_for_params).
+
+2.  **Evaluating the "Steepness" (fn argument in optim()):**
+
+    -   optim() "feels" the ground around its current position. It does this by slightly changing the parameter values (taking small steps in different directions) and calling our ddm_objective_function (fn) for each small change.
+
+    -   By observing how the objective function's output (the error score) changes with these small steps, the algorithm can estimate the "gradient" or the direction of steepest descent (the quickest way downhill).
+
+3.  **Taking a Step:** Based on the estimated gradient, optim() takes a step in the direction that it believes will most reduce the error score. The size of this step can also be adjusted by the algorithm.
+
+4.  **Repeat:** From its new position, it re-evaluates the steepness (calls fn again) and takes another step.
+
+5.  **Convergence:** This process repeats iteratively. optim() stops when:
+
+    -   It can no longer find a direction that significantly decreases the error score (it thinks it has reached a minimum).
+
+    -   It reaches a pre-set maximum number of iterations (maxit in control).
+
+    -   Other convergence criteria are met.
+
+**Key Inputs to optim() for Our DDM Fitting:**
+
+-   **par:** Our initial guesses for the DDM parameters we want to estimate.
+
+-   **fn:** Our ddm_objective_function. optim() will call this function repeatedly, passing it different sets of candidate DDM parameters.
+
+-   **method = "L-BFGS-B":** Specifies the optimization algorithm. "L-BFGS-B" is good because it allows us to set bounds.
+
+-   **lower and upper:** Vectors specifying the lower and upper bounds for each parameter being optimized. This prevents optim() from searching in unrealistic parameter regions (e.g., negative threshold a or negative noise s).
+
+-   **control list:** Allows us to set options like maxit (maximum iterations) and trace (how much progress information optim() prints).
+
+-   **Additional arguments for fn:** Any other arguments our ddm_objective_function needs (like target_stats, param_names_optim, n_sim_per_eval, fixed_params, constrain_z_to_a_div_2) are passed through optim() to fn.
+
+When optim() finishes, it returns a list containing:
+
+-   \$par: The parameter values that it found to give the lowest objective function score. These are our **estimated parameters**.
+
+-   \$value: The value of the objective function at these estimated parameters (the minimum error score found).
+
+-   \$convergence: A code indicating whether the algorithm converged successfully.
+
+-   \$message: Further information about convergence.
+
+Now, let's apply optim() to our DDM parameter recovery problem, where we try to estimate three key parameters.
+
+### Parameter Recovery Example with optim()
+
+Let's revisit the parameter recovery exercise from the previous conceptual discussion, aiming to recover three key DDM parameters: **mean_v**, **a** (threshold), and **mean_ter**, while constraining **mean_z = a/2**. Other parameters (s, sv, sz, st0) will be held fixed at their true values during this recovery attempt.
+
+### **1. Define True Parameters and Generate Target Data for optim()**
+
+```{r generate_target_data_for_optim_combined}
+# True parameters we want optim() to recover
+true_params_for_optim_recovery <- list(
+  mean_v   = 0.22,
+  a        = 1.1,
+  mean_ter = 0.28
+)
+# mean_z will be dynamically true_a / 2
+
+# Parameters held fixed at known "true" values during this recovery
+known_fixed_for_optim_recovery <- list(
+  s        = 0.1,
+  sv       = 0.15,
+  sz       = 0.0, # Set to 0 to simplify recovery of z via a/2 constraint
+  st0      = 0.0, # Set to 0 to simplify recovery of ter
+  dt       = 0.001
+)
+n_target_trials_for_optim <- 5000
+
+cat("Generating TARGET data for optim() with true parameters:\n")
+cat("mean_v =", true_params_for_optim_recovery$mean_v,
+    ", a =", true_params_for_optim_recovery$a,
+    ", mean_z =", true_params_for_optim_recovery$a / 2, # True mean_z
+    ", mean_ter =", true_params_for_optim_recovery$mean_ter, "\n")
+cat("Fixed for target sim: s=", known_fixed_for_optim_recovery$s, ", sv=", known_fixed_for_optim_recovery$sv,
+    ", sz=", known_fixed_for_optim_recovery$sz, ", st0=", known_fixed_for_optim_recovery$st0, "\n")
+
+set.seed(2025)
+target_optim_sim_args <- c(
+  list(n_trials = n_target_trials_for_optim,
+       mean_z = true_params_for_optim_recovery$a / 2), # Calculate true mean_z
+  true_params_for_optim_recovery, # Contains mean_v, a, mean_ter
+  known_fixed_for_optim_recovery  # Contains s, sv, sz, st0, dt
+)
+target_data_for_optim <- do.call(simulate_diffusion_experiment_variable, target_optim_sim_args)
+target_summary_stats_for_optim <- calculate_ddm_summary_stats(target_data_for_optim)
+
+cat("\nTarget Summary Stats for optim() (to be matched):\n")
+kable(as.data.frame(t(round(target_summary_stats_for_optim, 4))), caption = "Target Summary Stats for optim()")
+```
+
+**2. Setup and Run optim()**\
+We define which parameters optim should try to find, their initial guesses, and their bounds. We also tell our ddm_objective_function (modified in R/04_ddm_fitting_utils.R) to enforce mean_z = a/2.
+
+```{r run_optim_3params_combined, cache=TRUE}
+param_names_to_optimize_via_optim <- c("mean_v", "a", "mean_ter")
+
+initial_guesses_for_optim <- c(
+  mean_v   = 0.15,
+  a        = 0.9,
+  mean_ter = 0.20
+)
+
+# These are parameters NOT optimized by optim(), passed to objective function's 'fixed_params'
+# This now includes s, sv, sz, st0 from known_fixed_for_optim_recovery.
+# mean_z is NOT included here as it's dynamically set.
+fixed_params_for_obj_fn_optim <- known_fixed_for_optim_recovery
+
+lower_bounds_for_optim <- c(mean_v = -0.5, a = 0.3, mean_ter = 0.05)
+upper_bounds_for_optim <- c(mean_v = 0.8,  a = 2.5, mean_ter = 0.7)
+
+cat("Starting optim() to recover mean_v, a, mean_ter (with mean_z = a/2)...\n")
+optim_n_sim_eval_optim <- 1000 # For vignette speed; increase for better results (e.g., 2000-5000)
+optim_maxit_optim <- 50      # For vignette speed; increase for better results (e.g., 100-200)
+
+optim_results_final <- optim(
+  par = initial_guesses_for_optim,
+  fn = ddm_objective_function,
+  target_stats = target_summary_stats_for_optim,
+  param_names_optim = param_names_to_optimize_via_optim,
+  n_sim_per_eval = optim_n_sim_eval_optim,
+  fixed_params = fixed_params_for_obj_fn_optim,
+  quantiles_for_obj_func = c(0.1, 0.3, 0.5, 0.7, 0.9),
+  weight_p_correct = 2.0,
+  verbose = FALSE, # Set TRUE to see objective function output
+  constrain_z_to_a_div_2 = TRUE, # <<--- IMPORTANT FOR THIS EXAMPLE
+  method = "L-BFGS-B",
+  lower = lower_bounds_for_optim,
+  upper = upper_bounds_for_optim,
+  control = list(maxit = optim_maxit_optim, trace = 1, 
+                 parscale = abs(initial_guesses_for_optim) + 0.05)
+)
+cat("\nOptim() Finished.\n")
+```
