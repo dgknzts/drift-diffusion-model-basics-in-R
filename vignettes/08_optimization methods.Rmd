@@ -266,7 +266,9 @@ Now, let's apply optim() to our DDM parameter recovery problem, where we try to 
 
 Let's revisit the parameter recovery exercise from the previous conceptual discussion, aiming to recover three key DDM parameters: **mean_v**, **a** (threshold), and **mean_ter**, while constraining **mean_z = a/2**. Other parameters (s, sv, sz, st0) will be held fixed at their true values during this recovery attempt.
 
-### **1. Define True Parameters and Generate Target Data for optim()**
+**1. Define True Parameters and Generate Target Data for optim()**
+
+R's optim() function is a general-purpose optimization tool. We will use the "L-BFGS-B" method, which allows us to specify lower and upper bounds for the parameters being estimated, helping to keep the search within a plausible range.
 
 ```{r generate_target_data_for_optim_combined}
 # True parameters we want optim() to recover
@@ -310,7 +312,9 @@ kable(as.data.frame(t(round(target_summary_stats_for_optim, 4))), caption = "Tar
 ```
 
 **2. Setup and Run optim()**\
-We define which parameters optim should try to find, their initial guesses, and their bounds. We also tell our ddm_objective_function (modified in R/04_ddm_fitting_utils.R) to enforce mean_z = a/2.
+We define which parameters optim should try to find, their initial guesses, and their bounds. We also tell our ddm_objective_function.
+
+Now, we run the optimization. This can take some time, especially with many parameters and a reasonable number of simulations per evaluation. For this vignette, n_sim_per_eval and maxit are kept relatively low for speed; for more accurate recovery, these would typically be higher.
 
 ```{r run_optim_3params_combined, cache=TRUE}
 param_names_to_optimize_via_optim <- c("mean_v", "a", "mean_ter")
@@ -352,3 +356,128 @@ optim_results_final <- optim(
 )
 cat("\nOptim() Finished.\n")
 ```
+
+Let's display the results.
+
+```{r display_optim_results_combined}
+estimated_params_optim <- optim_results_final$par
+names(estimated_params_optim) <- param_names_to_optimize_via_optim
+
+# True values for the parameters we optimized
+true_optimized_values <- sapply(param_names_to_optimize_via_optim, 
+                                function(p) true_params_for_optim_recovery[[p]])
+
+optim_recovery_summary_df <- data.frame(
+  Parameter = param_names_to_optimize_via_optim,
+  True_Value = true_optimized_values,
+  Initial_Guess = initial_guesses_for_optim,
+  Estimated_Value = estimated_params_optim
+)
+# Add derived mean_z for clarity
+optim_recovery_summary_df <- rbind(optim_recovery_summary_df,
+                                   data.frame(Parameter="mean_z (derived as a/2)",
+                                              True_Value = true_params_for_optim_recovery$a / 2,
+                                              Initial_Guess = initial_guesses_for_optim["a"]/2,
+                                              Estimated_Value = estimated_params_optim["a"]/2))
+rownames(optim_recovery_summary_df) <- NULL
+kable(optim_recovery_summary_df, caption = "Parameter Recovery with optim() (mean_v, a, mean_ter; mean_z=a/2)", digits = 4)
+
+cat("\nOptim() convergence code:", optim_results_final$convergence, "\n")
+cat("Optim() message:", optim_results_final$message, "\n")
+cat("Final objective function value (error):", optim_results_final$value, "\n")
+```
+
+**3.Evaluate Fit Visually (e.g., with QPP)**
+
+A good way to assess the quality of the fit is to simulate data using our estimated parameters and compare its Quantile Probability Plot (QPP) to the QPP of the original "target" data.
+
+```{r evaluate_fit_qpp_fitting, fig.width=8, fig.height=5}
+# First, get the estimated parameters from the optimization output
+if (!exists("optim_results_3params")) {
+  stop("Optimization results 'optim_results_3params' not found. Please run the optimization chunk first.")
+}
+estimated_params_3 <- optim_results_3params$par
+names(estimated_params_3) <- param_names_to_optimize_3 # Make sure param_names_to_optimize_3 is available
+
+# Create full parameter set with estimated values for simulation
+final_sim_params_for_qpp_3 <- known_fixed_params_3 # Starts with s, sv, sz, st0, dt
+final_sim_params_for_qpp_3[["mean_v"]]   <- estimated_params_3["mean_v"]
+final_sim_params_for_qpp_3[["a"]]        <- estimated_params_3["a"]
+final_sim_params_for_qpp_3[["mean_ter"]] <- estimated_params_3["mean_ter"]
+final_sim_params_for_qpp_3[["mean_z"]]   <- estimated_params_3["a"] / 2
+
+cat("\nSimulating data with estimated parameters for QPP comparison (3 params recovered)...\n")
+# print(unlist(final_sim_params_for_qpp_3)) # Optional: for debugging params
+
+set.seed(9876)
+# Ensure n_target_trials_3params is available from the chunk where target data was generated
+if (!exists("n_target_trials_3params")) {
+    stop("'n_target_trials_3params' not found. Ensure it's defined in a previous chunk.")
+}
+
+fitted_data_for_qpp_3 <- do.call(simulate_diffusion_experiment_variable,
+                                 c(list(n_trials = n_target_trials_3params),
+                                   final_sim_params_for_qpp_3))
+
+# Add labels for plotting
+# Ensure target_data_3params_fitting exists
+if (!exists("target_data_3params_fitting")) {
+    stop("Target data 'target_data_3params_fitting' not found.")
+}
+target_data_3params_fitting$model_label <- "Target (True Params)"
+fitted_data_for_qpp_3$model_label <- "Fitted (Estimated Params)"
+
+qpp_fit_comparison_list_3 <- list(
+  "Target Data" = target_data_3params_fitting,
+  "Fitted Model" = fitted_data_for_qpp_3
+)
+
+# Use your QPP plotting function
+if(exists("plot_parameter_comparison")) {
+  plot_comparison_qpp_3 <- plot_parameter_comparison(
+    data_sim1 = target_data_3params_fitting,
+    data_sim2 = fitted_data_for_qpp_3,
+    param_varied = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
+    # Make rt_xlim robust to NAs or empty data
+    rt_xlim = if(nrow(target_data_3params_fitting)>0 && nrow(fitted_data_for_qpp_3)>0) {
+                 c(0, quantile(c(target_data_3params_fitting$rt, fitted_data_for_qpp_3$rt), 0.995, na.rm=TRUE) * 1.05)
+               } else { NULL }
+  )
+  print(plot_comparison_qpp_3)
+} else if (exists("plot_qpp")) {
+   plot_qpp(data_list = qpp_fit_comparison_list_3,
+            plot_title = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
+            condition_numbers = FALSE,
+            num_quantiles_fill = 5,
+            ridge_scale = 1
+            )
+} else {
+  cat("No suitable QPP plotting function found (plot_parameter_comparison or plot_qpp).\n")
+}
+```
+
+## **Interpreting the Results:**
+
+-   **Parameter Recovery Table:** Compare the "Estimated_Value" column to the "True_Value" column. How close did optim() get to recovering the original parameters? Some parameters (like mean_v, a, mean_ter) are often recovered more easily than variability parameters (sv, sz, st0) or s when using summary statistics.
+
+-   **QPP Plot:** Visually inspect the QPP. If the density plots and choice proportions for the "Target Data" and "Fitted Model" overlap closely, it suggests a good fit and successful parameter recovery.
+
+-   **Convergence Information:** optim_results_fitting\$convergence == 0 usually indicates that the algorithm believes it found a minimum. Other messages might indicate issues like reaching the maximum number of iterations.
+
+**Important Considerations for Fitting:**
+
+-   **Computational Cost:** Fitting multiple DDM parameters, especially with variability and many simulations per objective function evaluation, is computationally intensive and can take a long time. The settings used here (optim_n_sim_per_eval, optim_max_iterations) are relatively low for speed in a vignette; for research, these would be much higher.
+
+-   **Choice of Summary Statistics:** Using RT quantiles and choice proportions is a common approach. The more informative your summary statistics are about the full data distributions, the better optim() can do.
+
+-   **Objective Function:** Sum of Squared Differences (SSD) is simple. More statistically principled objective functions (e.g., based on chi-square distance or likelihood) are often preferred in practice as they can account for the different variances of the statistics being matched.
+
+-   **Identifiability & Trade-offs:** Recovering many DDM parameters simultaneously is challenging. Some parameters can "trade-off" against each other (e.g., increasing a can have similar effects on mean RT as decreasing mean_v). This is why fixing some parameters (like s to 0.1 in many studies, or a as we did here) is common.
+
+-   **Local Minima:** Optimization algorithms like optim() can get stuck in local minima, especially in complex parameter spaces. In serious fitting endeavors, it's crucial to run the optimization multiple times with different starting values (initial_guesses_fitting) to increase confidence in the solution found.
+
+## Conclusion
+
+This vignette provided a hands-on, albeit simplified, introduction to the concept of DDM parameter estimation through a parameter recovery exercise. We demonstrated how an optimization algorithm (optim()) can be used to search for DDM parameter values that allow a simulation to best reproduce the summary statistics of a target dataset.
+
+While full-scale DDM fitting involves more sophisticated statistical methods, more extensive computational resources, and careful consideration of model identifiability, this exercise illustrates the fundamental principle: iteratively adjusting model parameters to minimize the discrepancy between model predictions and data. This process is at the heart of how computational models like the DDM are used to draw inferences about cognitive processes from behavioral observations.
