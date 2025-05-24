@@ -265,7 +265,7 @@ run_ddm_optimization_multi_start <- function(n_starts = 5,
         par = current_initial_guesses,
         fn = objective_function,
         # Args for objective_function:
-        target_stats = target_stats_or_binned_props, # Renamed argument
+        target_binned_props = target_stats_or_binned_props, # Renamed argument
         param_names_optim = param_names_optim,
         n_sim_per_eval = n_sim_per_eval,
         fixed_params = fixed_params,

@@ -1,0 +1,203 @@
+---
+title: "DDM Parameter Recovery: Using Log-Likelihood and Multiple Starts"
+author: "Dogukan Nami Oztas"
+date: "2025-05-24"
+order: 8
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united 
+    highlight: tango
+    df_print: kable
+vignette: >
+  %\VignetteIndexEntry{DDM Parameter Recovery}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(patchwork) # For plotting later
+
+# Source functions needed for the DDM fitting example later
+source("../R/03_ddm_simulator_variable.R")
+source("../R/05_ddm_advanced_fitting.R")
+source("../R/utils/plot_parameter_comparison.R") 
+source("../R/utils/plot_quantile_probability.R") # Or whichever QPP plotter you finalize
+```
+
+## Introduction: Towards More Robust DDM Fitting
+
+In the previous fitting vignette, we introduced optimization using Sum of Squared Differences (SSD) on summary statistics. While illustrative, more statistically robust methods are often preferred for DDM fitting. Additionally, optimization algorithms can get stuck in **local minima**, meaning they find a good solution, but not necessarily the best possible global solution.
+
+This vignette demonstrates two advancements:
+
+1.  Using an objective function based on **binned log-likelihood**, which often provides a better statistical basis for comparing model predictions to data.
+
+2.  Addressing the local minima problem by **running the optimization multiple times from different random starting points**.
+
+3.  Attempting to recover a larger set of DDM parameters simultaneously.
+
+## Step 1: Binned Log-Likelihood Objective Function
+
+Instead of matching quantiles, we can divide the RT distributions for correct and error responses into several time bins. We then calculate the observed proportion of responses falling into each bin for our target data. Our objective function, ddm_binned_likelihood_objective(), will simulate data with candidate parameters, calculate the predicted proportions for these same bins, and then compute the multinomial log-likelihood of the observed bin counts given the predicted bin proportions. optim() will seek to maximize this log-likelihood (or minimize its negative).
+
+This method uses more of the distributional information than just a few quantiles. The helper calculate_binned_rt_proportions() prepares data for this.
+
+## Step 2: Define True Parameters and Generate "Target" Data
+
+We'll simulate target data with known parameters, including across-trial variability. We aim to recover mean_v, a, s, mean_ter, sv, sz, and st0, while constraining mean_z = a/2.
+
+```{r define_true_params_adv_fitting}
+# True parameters for generating our target dataset
+true_params_adv <- list(
+  mean_v   = 0.18,
+  a        = 0.5, # We will try to recover 'a'
+  # mean_z will be true_a / 2
+  s        = 0.2,
+  mean_ter = 0.08,
+  sv       = 0.20,
+  sz       = 0.05,
+  st0      = 0.04
+)
+
+# Fixed for simulation, not part of true_params_adv for recovery list
+fixed_dt_adv <- 0.001
+n_target_trials_adv <- 10000 # More trials for stable target binned proportions
+
+cat("Generating TARGET data for recovery with true parameters:\n")
+# Construct the full list for simulation
+target_sim_args_adv_list <- c(
+  list(n_trials = n_target_trials_adv,
+       mean_z = true_params_adv$a / 2, # Derived from true 'a'
+       dt = fixed_dt_adv),
+  true_params_adv # This list contains mean_v, a, s, mean_ter, sv, sz, st0
+)
+
+set.seed(3030)
+target_data_adv <- do.call(simulate_diffusion_experiment_variable, target_sim_args_adv_list)
+
+# Define RT bins for likelihood calculation (adjust as needed based on typical RTs)
+# Ensure rt_bins cover the expected range of RTs well.
+max_rt_in_target <- if(nrow(target_data_adv)>0) max(target_data_adv$rt, na.rm=TRUE) else 2.0
+if(!is.finite(max_rt_in_target)) max_rt_in_target <- 2.0
+rt_bins_for_likelihood <- seq(0, ceiling(max_rt_in_target * 1.1), by = 0.15) # Example bins
+if(length(rt_bins_for_likelihood) < 2) rt_bins_for_likelihood <- c(0, max_rt_in_target + 0.15)
+
+
+target_binned_props_adv <- calculate_binned_rt_proportions(
+  target_data_adv,
+  rt_bins = rt_bins_for_likelihood
+)
+
+cat("\nTarget Binned RT Proportions (sample):\n")
+kable(head(target_binned_props_adv), caption="Target Binned Proportions (Sample)")
+```
+
+## Step 3: Advanced Parameter Recovery with Multiple Starts
+
+We will use our run_ddm_optimization_multi_start() function. This function repeatedly calls optim() with different, randomly chosen starting parameter values. This increases the chance of finding the global minimum of the objective function.
+
+```{r setup_and_run_adv_optim, cache=TRUE, results='hold'}
+# Parameters to be optimized
+param_names_to_optimize_adv <- c("mean_v", "a", "s", "mean_ter", "sv", "sz", "st0")
+
+# Define MEANS and SDs for generating random initial guesses
+# The actual guesses will be drawn from Normal(mean, sd) for each start
+initial_guesses_means_adv <- c(
+  mean_v   = 0.15, a = 1.0,  s = 0.1, mean_ter = 0.2,
+  sv = 0.05, sz = 0.1, st0 = 0.03
+)
+initial_guesses_sds_adv <- c( # SDs for sampling initial guesses
+  mean_v   = 0.1, a = 0.3,  s = 0.05, mean_ter = 0.1,
+  sv = 0.05, sz = 0.1, st0 = 0.03
+)
+
+# Bounds for parameters (must match param_names_to_optimize_adv)
+lower_bounds_adv <- c(
+  mean_v = -0.5, a = 0.3,  s = 0.01, mean_ter = 0.02,
+  sv = 0,      sz = 0,   st0 = 0
+)
+upper_bounds_adv <- c(
+  mean_v = 0.7,  a = 2.5,  s = 0.4, mean_ter = 0.2,
+  sv = 0.5,   sz = 0.5,  st0 = 0.3 # Max sz should ideally be < min 'a' bound
+)
+# Ensure upper bound for sz is reasonable if 'a' is small
+upper_bounds_adv["sz"] <- min(upper_bounds_adv["sz"], lower_bounds_adv["a"]*0.9)
+
+
+# Fixed parameters for the objective function
+fixed_params_for_optim_adv <- list(
+  dt = fixed_dt_adv,
+  # For calculate_binned_rt_proportions, if not hardcoded:
+  correct_choice_value = 1, 
+  error_choice_value = 0 
+)
+
+cat("Starting advanced optimization with multiple random starts...\n")
+# For vignette speed, n_starts and optim_maxit are low. Increase for real fitting.
+n_optim_starts <- 3    # Number of random starts for optim()
+optim_n_sim_adv <- 1000 # Trials per objective function call
+optim_maxit_adv <- 50   # Max iterations per optim() run
+
+adv_optim_results_list <- run_ddm_optimization_multi_start(
+  n_starts = n_optim_starts,
+  target_stats_or_binned_props = target_binned_props_adv, # Pass binned target
+  param_names_optim = param_names_to_optimize_adv,
+  initial_guesses_means = initial_guesses_means_adv,
+  initial_guesses_sds = initial_guesses_sds_adv,
+  lower_bounds = lower_bounds_adv,
+  upper_bounds = upper_bounds_adv,
+  objective_fn_name = "ddm_binned_likelihood_objective", # Use new objective fn
+  n_sim_per_eval = optim_n_sim_adv,
+  fixed_params = fixed_params_for_optim_adv,
+  optim_maxit = optim_maxit_adv,
+  # Args for ddm_binned_likelihood_objective:
+  rt_bins = rt_bins_for_likelihood,
+  constrain_z_to_a_div_2 = TRUE, # mean_z will be a/2
+  verbose = FALSE # Set to TRUE for detailed per-iteration output
+)
+
+cat("\nAdvanced Optimization Finished.\n")
+```
+
+Display the best result and summary of all runs.
+
+```{r display_adv_fitting_results}
+best_estimated_params_adv <- adv_optim_results_list$best_optim_result$par
+names(best_estimated_params_adv) <- param_names_to_optimize_adv # Ensure names
+
+cat("\n--- Best Parameter Recovery Results (Advanced Fit) ---\n")
+cat("Fixed parameters for objective fn: dt=", fixed_params_for_optim_adv$dt, "\n")
+cat("Constraint: mean_z was dynamically set to estimated_a / 2\n\n")
+
+# Prepare a data frame for comparison
+adv_recovery_summary_df <- data.frame(
+  Parameter = param_names_to_optimize_adv,
+  True_Value = sapply(param_names_to_optimize_adv, function(p) true_params_adv[[p]]),
+  # Initial_Guess_Mean = initial_guesses_means_adv[param_names_to_optimize_adv], # Can add if desired
+  Estimated_Value_Best_Run = best_estimated_params_adv
+)
+# Add derived mean_z for clarity
+adv_recovery_summary_df <- rbind(adv_recovery_summary_df,
+                                   data.frame(Parameter="mean_z (derived as a/2)",
+                                              True_Value = true_params_adv$a / 2,
+                                              # Initial_Guess_Mean = NA, # Not directly guessed
+                                              Estimated_Value_Best_Run = best_estimated_params_adv["a"]/2))
+rownames(adv_recovery_summary_df) <- NULL
+kable(adv_recovery_summary_df, caption = "Advanced Parameter Recovery (Best of Multiple Starts)", digits = 4)
+
+cat("\nBest run convergence code:", adv_optim_results_list$best_optim_result$convergence, "\n")
+cat("Best run message:", adv_optim_results_list$best_optim_result$message, "\n")
+cat("Best run final objective function value (NegLL):", adv_optim_results_list$best_optim_result$value, "\n")
+
+cat("\nSummary of All Optimization Runs:\n")
+kable(adv_optim_results_list$all_runs_summary %>% 
+        select(run, obj_value, convergence, starts_with("estimated_")) %>%
+        mutate(across(where(is.numeric), ~round(.x,4))), 
+      caption = "Summary of All Optimization Runs")
+```
