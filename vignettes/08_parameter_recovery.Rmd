@@ -1,5 +1,5 @@
 ---
-title: "DDM Parameter Recovery: Using Log-Likelihood and Multiple Starts"
+title: "DDM Parameter Recovery: A Step-by-Step Tutorial"
 author: "Dogukan Nami Oztas"
 date: "2025-05-24"
 order: 8
@@ -16,208 +16,340 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
 library(dplyr)
 library(ggplot2)
 library(knitr)
-library(patchwork) # For plotting later
 
-# Source functions needed for the DDM fitting example later
+# Source the functions we need for DDM simulation and fitting
 source("../R/03_ddm_simulator_variable.R")
 source("../R/05_ddm_advanced_fitting.R")
-source("../R/utils/plot_parameter_comparison.R") 
-source("../R/utils/plot_quantile_probability.R") # Or whichever QPP plotter you finalize
 ```
 
-## Introduction: Towards More Robust DDM Fitting
+## Introduction to Parameter Recovery
 
-In the previous fitting vignette, we introduced optimization using Sum of Squared Differences (SSD) on summary statistics. While illustrative, more statistically robust methods are often preferred for DDM fitting. Additionally, optimization algorithms can get stuck in **local minima**, meaning they find a good solution, but not necessarily the best possible global solution.
+**Parameter recovery** is a crucial validation step in computational modeling. The question is: "If we know the true parameters that generated some data, can our fitting procedure recover those same parameters?"
 
-This vignette demonstrates two advancements:
+This vignette demonstrates how to:
 
-1.  Using an objective function based on **binned log-likelihood**, which often provides a better statistical basis for comparing model predictions to data.
+1.  **Generate data** with known DDM parameters
+2.  **Set up optimization** to find the best-fitting parameters
+3.  **Evaluate recovery** by comparing estimated vs. true parameters
+4.  **Use multiple optimization starts** to avoid local minima
 
-2.  Addressing the local minima problem by **running the optimization multiple times from different random starting points**.
+## Why is Parameter Recovery Important?
 
-3.  Attempting to recover a larger set of DDM parameters simultaneously.
+Before applying DDM fitting to real experimental data, we need confidence that our method works. Parameter recovery testing helps us:
 
-## Step 1: Binned Log-Likelihood Objective Function
+-   **Validate our fitting procedure**: Does it work when we know the answer?
+-   **Understand parameter identifiability**: Which parameters are easy/hard to recover?
+-   **Set realistic expectations**: How much error should we expect?
+-   **Debug fitting problems**: If recovery fails, there's an issue with our method
 
-Instead of matching quantiles, we can divide the RT distributions for correct and error responses into several time bins. We then calculate the observed proportion of responses falling into each bin for our target data. Our objective function, ddm_binned_likelihood_objective(), will simulate data with candidate parameters, calculate the predicted proportions for these same bins, and then compute the multinomial log-likelihood of the observed bin counts given the predicted bin proportions. optim() will seek to maximize this log-likelihood (or minimize its negative).
+## Step 1: Generate Target Data with Known Parameters
 
-This method uses more of the distributional information than just a few quantiles. The helper calculate_binned_rt_proportions() prepares data for this.
+Let's start by generating DDM data with parameters we want to recover:
 
-## Step 2: Define True Parameters and Generate "Target" Data
-
-We'll simulate target data with known parameters, including across-trial variability. We aim to recover mean_v, a, s, mean_ter, sv, sz, and st0, while constraining mean_z = a/2.
-
-```{r define_true_params_adv_fitting}
-# True parameters for generating our target dataset
-true_params_adv <- list(
-  mean_v   = 0.18,
-  a        = 0.5, # We will try to recover 'a'
-  # mean_z will be true_a / 2
-  s        = 0.2,
-  mean_ter = 0.08,
-  sv       = 0.20,
-  sz       = 0.05,
-  st0      = 0.04
+```{r generate_target_data}
+# Define the "true" parameters that we'll try to recover
+true_parameters <- list(
+  mean_v   = 0.15,    # Drift rate
+  a        = 0.8,     # Threshold  
+  mean_z   = 0.4,     # Starting point
+  s        = 0.1,     # Within-trial noise
+  mean_ter = 0.12,    # Non-decision time
+  sv       = 0.08,    # Drift rate variability
+  sz       = 0.02,    # Starting point variability  
+  st0      = 0.03     # Non-decision time variability
 )
 
-# Fixed for simulation, not part of true_params_adv for recovery list
-fixed_dt_adv <- 0.001
-n_target_trials_adv <- 10000 # More trials for stable target binned proportions
+cat("True Parameters for Recovery Test:\n")
+print(unlist(true_parameters))
 
-cat("Generating TARGET data for recovery with true parameters:\n")
-# Construct the full list for simulation
-target_sim_args_adv_list <- c(
-  list(n_trials = n_target_trials_adv,
-       mean_z = true_params_adv$a / 2, # Derived from true 'a'
-       dt = fixed_dt_adv),
-  true_params_adv # This list contains mean_v, a, s, mean_ter, sv, sz, st0
+# Generate target dataset with these parameters
+set.seed(12345)  # For reproducibility
+target_data <- simulate_diffusion_experiment_variable(
+  n_trials = 3000,
+  mean_v   = true_parameters$mean_v,
+  a        = true_parameters$a,
+  mean_z   = true_parameters$mean_z,
+  s        = true_parameters$s,
+  dt       = 0.001,
+  mean_ter = true_parameters$mean_ter,
+  sv       = true_parameters$sv,
+  sz       = true_parameters$sz,
+  st0      = true_parameters$st0
 )
 
-set.seed(3030)
-target_data_adv <- do.call(simulate_diffusion_experiment_variable, target_sim_args_adv_list)
+cat("\nGenerated", nrow(target_data), "trials for parameter recovery test\n")
 
-# Define RT bins for likelihood calculation (adjust as needed based on typical RTs)
-# Ensure rt_bins cover the expected range of RTs well.
-max_rt_in_target <- if(nrow(target_data_adv)>0) max(target_data_adv$rt, na.rm=TRUE) else 2.0
-if(!is.finite(max_rt_in_target)) max_rt_in_target <- 2.0
-rt_bins_for_likelihood <- seq(0, ceiling(max_rt_in_target * 1.1), by = 0.15) # Example bins
-if(length(rt_bins_for_likelihood) < 2) rt_bins_for_likelihood <- c(0, max_rt_in_target + 0.15)
+# Quick summary of the target data
+summary_stats <- target_data %>%
+  filter(!is.na(choice) & !is.na(rt)) %>%
+  summarise(
+    n_trials = n(),
+    prop_correct = mean(choice == 1),
+    mean_rt_correct = mean(rt[choice == 1], na.rm = TRUE),
+    mean_rt_error = mean(rt[choice == 0], na.rm = TRUE),
+    .groups = 'drop'
+  )
 
-
-target_binned_props_adv <- calculate_binned_rt_proportions(
-  target_data_adv,
-  rt_bins = rt_bins_for_likelihood
-)
-
-cat("\nTarget Binned RT Proportions (sample):\n")
-kable(head(target_binned_props_adv), caption="Target Binned Proportions (Sample)")
+kable(summary_stats, caption = "Target Data Summary", digits = 3)
 ```
 
-## Step 2.5: Diagnostic Check
+## Step 2: Prepare Data for Fitting
 
-Before running the full optimization, let's test our objective function with the true parameters to ensure it's working correctly:
+Our fitting procedure uses binned reaction time distributions. This means we divide the RT range into bins and count how many responses fall into each bin:
 
-```{r diagnostic_check}
-# Run diagnostic to check if objective function works properly
-diagnostic_results <- diagnose_ddm_fitting(
-  true_params = true_params_adv,
-  target_binned_props = target_binned_props_adv,
+```{r prepare_binned_data}
+# Create RT bins for fitting
+max_rt <- max(target_data$rt, na.rm = TRUE)
+rt_bins <- seq(0, ceiling(max_rt * 1.2), by = 0.1)
+
+cat("RT bins:", length(rt_bins) - 1, "bins from", min(rt_bins), "to", max(rt_bins), "seconds\n")
+
+# Calculate binned proportions from target data
+target_binned_props <- calculate_binned_rt_proportions(
+  target_data,
+  rt_bins = rt_bins
+)
+
+cat("\nBinned target data:\n")
+kable(head(target_binned_props, 10), caption = "Sample of Binned Target Data")
+```
+
+## Step 3: Set Up Parameter Recovery
+
+Now we define which parameters to optimize and their constraints:
+
+```{r setup_optimization}
+# Parameters we want to recover
+param_names <- c("mean_v", "a", "mean_z", "s", "mean_ter", "sv", "sz", "st0")
+
+# Starting values for optimization (we'll use multiple random starts)
+initial_means <- c(
+  mean_v   = 0.10,   # Start near but not exactly at true values
+  a        = 0.9,    
+  mean_z   = 0.45,   
+  s        = 0.12,   
+  mean_ter = 0.10,   
+  sv       = 0.05,   
+  sz       = 0.015,  
+  st0      = 0.025   
+)
+
+# Variability around starting values
+initial_sds <- c(
+  mean_v   = 0.03,   # Reasonable search ranges
+  a        = 0.1,    
+  mean_z   = 0.05,   
+  s        = 0.02,   
+  mean_ter = 0.02,   
+  sv       = 0.02,   
+  sz       = 0.01,   
+  st0      = 0.01    
+)
+
+# Parameter bounds
+lower_bounds <- c(
+  mean_v   = -0.5,   # Drift can be negative
+  a        = 0.3,    # Threshold must be positive
+  mean_z   = 0.1,    # Starting point must be within bounds
+  s        = 0.05,   # Noise must be positive
+  mean_ter = 0.01,   # Non-decision time must be positive
+  sv       = 0,      # Variability parameters must be non-negative
+  sz       = 0,      
+  st0      = 0       
+)
+
+upper_bounds <- c(
+  mean_v   = 0.8,    
+  a        = 1.5,    
+  mean_z   = 0.7,    # Starting point must be less than threshold
+  s        = 0.3,    
+  mean_ter = 0.25,   
+  sv       = 0.3,    
+  sz       = 0.1,    
+  st0      = 0.1     
+)
+
+# Fixed parameters for simulation
+fixed_params <- list(
+  dt = 0.001,
+  correct_choice_value = 1,
+  error_choice_value = 0
+)
+
+cat("Optimization setup complete.\n")
+cat("Parameters to recover:", paste(param_names, collapse = ", "), "\n")
+```
+
+## Step 4: Run Parameter Recovery
+
+We'll use multiple optimization starts to increase our chances of finding the global minimum:
+
+```{r run_optimization, cache=TRUE}
+cat("Starting parameter recovery with multiple optimization runs...\n")
+
+# Run optimization with multiple random starts
+recovery_results <- run_ddm_optimization_multi_start(
+  n_starts = 5,  # Number of different starting points
+  target_stats_or_binned_props = target_binned_props,
+  param_names_optim = param_names,
+  initial_guesses_means = initial_means,
+  initial_guesses_sds = initial_sds,
+  lower_bounds = lower_bounds,
+  upper_bounds = upper_bounds,
   objective_fn_name = "ddm_binned_likelihood_objective",
-  n_sim_per_eval = 2000,
-  fixed_params = list(dt = fixed_dt_adv, correct_choice_value = 1, error_choice_value = 0),
-  rt_bins = rt_bins_for_likelihood,
-  constrain_z_to_a_div_2 = TRUE,
-  param_names_optim = c("mean_v", "a", "s", "mean_ter", "sv", "sz", "st0")
+  n_sim_per_eval = 1500,  # Trials simulated per optimization step
+  fixed_params = fixed_params,
+  optim_maxit = 150,      # Maximum optimization iterations
+  rt_bins = rt_bins,
+  constrain_z_to_a_div_2 = FALSE,  # Allow mean_z to be optimized independently
+  verbose = FALSE
 )
+
+cat("Parameter recovery completed!\n")
 ```
 
-If the diagnostic shows that the objective function value with true parameters is reasonable and perturbed parameters give worse (higher) values, then the objective function is working correctly.
+## Step 5: Evaluate Recovery Results
 
-## Step 3: Advanced Parameter Recovery with Multiple Starts
+Let's examine how well we recovered the true parameters:
 
-We will use our run_ddm_optimization_multi_start() function. This function repeatedly calls optim() with different, randomly chosen starting parameter values. This increases the chance of finding the global minimum of the objective function.
+```{r evaluate_recovery}
+# Extract the best parameter estimates
+best_estimates <- recovery_results$best_optim_result$par
+names(best_estimates) <- param_names
 
-```{r setup_and_run_adv_optim, cache=TRUE, results='hold'}
-# Parameters to be optimized
-param_names_to_optimize_adv <- c("mean_v", "a", "s", "mean_ter", "sv", "sz", "st0")
-
-# Define MEANS and SDs for generating random initial guesses
-# The actual guesses will be drawn from Normal(mean, sd) for each start
-initial_guesses_means_adv <- c(
-  mean_v   = 0.18, a = 0.6,  s = 0.2, mean_ter = 0.1,  # Closer to true values
-  sv = 0.15, sz = 0.06, st0 = 0.05
-)
-initial_guesses_sds_adv <- c( # SDs for sampling initial guesses
-  mean_v   = 0.05, a = 0.2,  s = 0.05, mean_ter = 0.03,  # Reduced SDs for tighter search
-  sv = 0.05, sz = 0.02, st0 = 0.02
+# Create comparison table
+recovery_comparison <- data.frame(
+  Parameter = param_names,
+  True_Value = sapply(param_names, function(p) true_parameters[[p]]),
+  Estimated_Value = best_estimates,
+  Absolute_Error = abs(best_estimates - sapply(param_names, function(p) true_parameters[[p]])),
+  Percent_Error = abs(best_estimates - sapply(param_names, function(p) true_parameters[[p]])) / 
+                  sapply(param_names, function(p) true_parameters[[p]]) * 100
 )
 
-# Bounds for parameters (must match param_names_to_optimize_adv)
-lower_bounds_adv <- c(
-  mean_v = -0.3, a = 0.2,  s = 0.05, mean_ter = 0.01,  # Tightened some bounds
-  sv = 0,      sz = 0,   st0 = 0
-)
-upper_bounds_adv <- c(
-  mean_v = 0.5,  a = 1.5,  s = 0.5, mean_ter = 0.15,   # Better aligned with true values
-  sv = 0.4,   sz = 0.2,  st0 = 0.1 # More reasonable upper bounds
-)
-# Ensure upper bound for sz is reasonable if 'a' is small
-upper_bounds_adv["sz"] <- min(upper_bounds_adv["sz"], lower_bounds_adv["a"]*0.8)
+kable(recovery_comparison, 
+      caption = "Parameter Recovery Results", 
+      digits = 4)
 
+# Summary of recovery quality
+cat("\n=== Recovery Quality Summary ===\n")
+cat("Best objective function value:", round(recovery_results$best_optim_result$value, 2), "\n")
+cat("Optimization convergence:", recovery_results$best_optim_result$convergence, "\n")
 
-# Fixed parameters for the objective function
-fixed_params_for_optim_adv <- list(
-  dt = fixed_dt_adv,
-  # For calculate_binned_rt_proportions, if not hardcoded:
-  correct_choice_value = 1, 
-  error_choice_value = 0 
-)
+# Calculate overall recovery metrics
+mean_abs_error <- mean(recovery_comparison$Absolute_Error)
+mean_pct_error <- mean(recovery_comparison$Percent_Error)
 
-cat("Starting advanced optimization with multiple random starts...\n")
-# For vignette speed, n_starts and optim_maxit are low. Increase for real fitting.
-n_optim_starts <- 5    # Increased from 3 for better coverage
-optim_n_sim_adv <- 2000 # Increased from 1000 for more stable likelihood estimates
-optim_maxit_adv <- 100   # Increased from 50 for better convergence
+cat("\nOverall Recovery Performance:\n")
+cat("Mean absolute error:", round(mean_abs_error, 4), "\n")
+cat("Mean percentage error:", round(mean_pct_error, 1), "%\n")
 
-adv_optim_results_list <- run_ddm_optimization_multi_start(
-  n_starts = n_optim_starts,
-  target_stats_or_binned_props = target_binned_props_adv, # Pass binned target
-  param_names_optim = param_names_to_optimize_adv,
-  initial_guesses_means = initial_guesses_means_adv,
-  initial_guesses_sds = initial_guesses_sds_adv,
-  lower_bounds = lower_bounds_adv,
-  upper_bounds = upper_bounds_adv,
-  objective_fn_name = "ddm_binned_likelihood_objective", # Use new objective fn
-  n_sim_per_eval = optim_n_sim_adv,
-  fixed_params = fixed_params_for_optim_adv,
-  optim_maxit = optim_maxit_adv,
-  # Args for ddm_binned_likelihood_objective:
-  rt_bins = rt_bins_for_likelihood,
-  constrain_z_to_a_div_2 = TRUE, # mean_z will be a/2
-  verbose = FALSE # Set to TRUE for detailed per-iteration output
-)
+# Show which parameters were recovered well vs. poorly
+well_recovered <- recovery_comparison$Parameter[recovery_comparison$Percent_Error < 15]
+poorly_recovered <- recovery_comparison$Parameter[recovery_comparison$Percent_Error >= 15]
 
-cat("\nAdvanced Optimization Finished.\n")
+cat("\nWell-recovered parameters (<15% error):", paste(well_recovered, collapse = ", "), "\n")
+cat("Challenging parameters (≥15% error):", paste(poorly_recovered, collapse = ", "), "\n")
 ```
 
-Display the best result and summary of all runs.
+## Step 6: Visualize Recovery Results
 
-```{r display_adv_fitting_results}
-best_estimated_params_adv <- adv_optim_results_list$best_optim_result$par
-names(best_estimated_params_adv) <- param_names_to_optimize_adv # Ensure names
+Let's create a visual comparison of true vs. estimated parameters:
 
-cat("\n--- Best Parameter Recovery Results (Advanced Fit) ---\n")
-cat("Fixed parameters for objective fn: dt=", fixed_params_for_optim_adv$dt, "\n")
-cat("Constraint: mean_z was dynamically set to estimated_a / 2\n\n")
+```{r visualize_recovery, fig.width=10, fig.height=6}
+# Create visualization
+recovery_plot <- ggplot(recovery_comparison, aes(x = Parameter)) +
+  geom_point(aes(y = True_Value, color = "True"), size = 3) +
+  geom_point(aes(y = Estimated_Value, color = "Estimated"), size = 3) +
+  geom_segment(aes(xend = Parameter, y = True_Value, yend = Estimated_Value),
+               alpha = 0.7, linetype = "dashed") +
+  scale_color_manual(values = c("True" = "blue", "Estimated" = "red")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Parameter Recovery Results",
+       subtitle = "Blue = True Values, Red = Estimated Values",
+       y = "Parameter Value",
+       color = "Type") +
+  facet_wrap(~ Parameter, scales = "free_y", ncol = 4)
 
-# Prepare a data frame for comparison
-adv_recovery_summary_df <- data.frame(
-  Parameter = param_names_to_optimize_adv,
-  True_Value = sapply(param_names_to_optimize_adv, function(p) true_params_adv[[p]]),
-  # Initial_Guess_Mean = initial_guesses_means_adv[param_names_to_optimize_adv], # Can add if desired
-  Estimated_Value_Best_Run = best_estimated_params_adv
-)
-# Add derived mean_z for clarity
-adv_recovery_summary_df <- rbind(adv_recovery_summary_df,
-                                   data.frame(Parameter="mean_z (derived as a/2)",
-                                              True_Value = true_params_adv$a / 2,
-                                              # Initial_Guess_Mean = NA, # Not directly guessed
-                                              Estimated_Value_Best_Run = best_estimated_params_adv["a"]/2))
-rownames(adv_recovery_summary_df) <- NULL
-kable(adv_recovery_summary_df, caption = "Advanced Parameter Recovery (Best of Multiple Starts)", digits = 4)
-
-cat("\nBest run convergence code:", adv_optim_results_list$best_optim_result$convergence, "\n")
-cat("Best run message:", adv_optim_results_list$best_optim_result$message, "\n")
-cat("Best run final objective function value (NegLL):", adv_optim_results_list$best_optim_result$value, "\n")
-
-cat("\nSummary of All Optimization Runs:\n")
-kable(adv_optim_results_list$all_runs_summary %>% 
-        select(run, obj_value, convergence, starts_with("estimated_")) %>%
-        mutate(across(where(is.numeric), ~round(.x,4))), 
-      caption = "Summary of All Optimization Runs")
+print(recovery_plot)
 ```
+
+## Understanding Recovery Results
+
+### What Makes Parameters Easy or Hard to Recover?
+
+**Typically Well-Recovered Parameters:** - **Threshold (a)**: Controls the overall speed-accuracy tradeoff - **Drift rate (mean_v)**: Determines choice bias and mean RT - **Starting point (mean_z)**: Affects response bias
+
+**Typically Challenging Parameters:** - **Variability parameters (sv, sz, st0)**: Hard to distinguish from noise - **Within-trial noise (s)**: Often confounded with other parameters
+
+### Why Multiple Optimization Starts?
+
+Let's see how different starting points performed:
+
+```{r show_all_runs}
+# Show results from all optimization runs
+all_runs <- recovery_results$all_runs_summary %>%
+  select(run, obj_value, convergence, starts_with("estimated_")) %>%
+  arrange(obj_value)
+
+kable(head(all_runs), 
+      caption = "All Optimization Runs (sorted by objective value)", 
+      digits = 4)
+
+cat("Range of objective values across runs:", 
+    round(min(all_runs$obj_value), 2), "to", 
+    round(max(all_runs$obj_value), 2), "\n")
+```
+
+Multiple starts help because: - **Local minima**: Optimization can get stuck in suboptimal solutions - **Parameter interactions**: Some parameter combinations create complex landscapes - **Random variation**: Simulation noise can mislead optimization
+
+## Best Practices for Parameter Recovery
+
+### 1. **Use Sufficient Data**
+
+-   More trials → more stable parameter estimates
+-   Recommended: 1000+ trials for basic recovery
+-   3000+ trials for variability parameters
+
+### 2. **Multiple Optimization Starts**
+
+-   Use 5-10 different starting points
+-   Compare results across runs
+-   Choose the best objective function value
+
+### 3. **Realistic Parameter Bounds**
+
+-   Set bounds based on theoretical constraints
+-   Don't make bounds too tight (prevents exploration)
+-   Don't make bounds too loose (allows unrealistic values)
+
+### 4. **Evaluate Recovery Quality**
+
+-   Always test on simulated data first
+-   Check which parameters are identifiable
+-   Set realistic expectations for real data
+
+## Summary
+
+This tutorial demonstrated the complete parameter recovery workflow:
+
+1.  ✅ **Generated target data** with known parameters
+2.  ✅ **Set up optimization** with appropriate bounds and starting values\
+3.  ✅ **Used multiple starts** to find global minimum
+4.  ✅ **Evaluated recovery quality** through direct comparison
+5.  ✅ **Identified** which parameters are easy/hard to recover
+
+**Key takeaway**: Parameter recovery testing is essential before fitting real data. It helps validate your method and set realistic expectations for recovery accuracy.
+
+### Next Steps
+
+-   Apply this approach to your own experimental data
+-   Experiment with different sample sizes and parameter values
+-   Consider which parameters are most important for your research questions
+-   Use parameter recovery results to guide data collection planning
