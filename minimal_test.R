@@ -5,7 +5,7 @@ cat("=== Minimal DDM Test ===\n")
 cat("1. Loading dplyr...\n")
 if(require(dplyr, quietly = TRUE)) {
   cat("   dplyr loaded successfully\n")
-} else {
+} else {s
   cat("   ERROR: dplyr not available\n")
 }
 
@@ -43,7 +43,7 @@ if(!is.null(test_sim) && nrow(test_sim) > 0) {
   cat("   Basic simulation FAILED\n")
 }
 
-# Test 4: Load advanced functions  
+# Test 4: Load advanced functions
 cat("4. Loading advanced fitting functions...\n")
 tryCatch({
   source("R/05_ddm_advanced_fitting.R")
@@ -56,14 +56,14 @@ tryCatch({
 if(!is.null(test_sim) && nrow(test_sim) > 0) {
   cat("5. Testing binned proportions calculation...\n")
   rt_bins <- seq(0, 2, by = 0.2)
-  
+
   binned_props <- tryCatch({
     calculate_binned_rt_proportions(test_sim, rt_bins = rt_bins)
   }, error = function(e) {
     cat("   ERROR in binned proportions:", conditionMessage(e), "\n")
     return(NULL)
   })
-  
+
   if(!is.null(binned_props) && nrow(binned_props) > 0) {
     cat("   Binned proportions calculation WORKS!\n")
     cat("   Number of bins:", nrow(binned_props), "\n")
@@ -72,4 +72,4 @@ if(!is.null(test_sim) && nrow(test_sim) > 0) {
   }
 }
 
-cat("\n=== Minimal Test Complete ===\n") 
+cat("\n=== Minimal Test Complete ===\n")

@@ -79,10 +79,29 @@ calculate_binned_rt_proportions <- function(data,
   binned_df <- dplyr::bind_rows(binned_data_list)
 
   # Add midpoints for easier plotting/matching (optional)
-  bin_lower <- as.numeric(sub("\\[([0-9\\.]+),.*", "\\1", binned_df$rt_bin_label))
-  bin_upper <- as.numeric(sub(".*,([0-9\\.]+)\\)", "\\1", binned_df$rt_bin_label))
-  binned_df$rt_bin_midpoint <- (bin_lower + bin_upper) / 2
-
+  # More robust parsing of bin labels to avoid NA warnings
+  binned_df$rt_bin_midpoint <- sapply(binned_df$rt_bin_label, function(label) {
+    # Try to extract numbers from labels like "[0,0.15)" or "[0.15,0.3)"
+    label_clean <- as.character(label)
+    
+    # More robust regex to extract decimal numbers
+    numbers <- suppressWarnings(as.numeric(unlist(regmatches(label_clean, gregexpr("[0-9]*\\.?[0-9]+", label_clean)))))
+    
+    # Remove any NAs and take first two valid numbers
+    numbers <- numbers[!is.na(numbers)]
+    
+    # If we found at least 2 numbers, return their midpoint
+    if(length(numbers) >= 2) {
+      return((numbers[1] + numbers[2]) / 2)
+    } else if(length(numbers) == 1) {
+      # If only one number found, use it as approximation
+      return(numbers[1])
+    } else {
+      # If no numbers found, return 0 (will be handled below)
+      return(0)
+    }
+  })
+  
   return(binned_df)
 }
 
@@ -149,7 +168,11 @@ ddm_binned_likelihood_objective <- function(params_to_test,
   if(!"sz" %in% names(current_iter_params)) current_iter_params[["sz"]] <- 0
   if(!"st0" %in% names(current_iter_params)) current_iter_params[["st0"]] <- 0
 
-  sim_args <- c(list(n_trials = n_sim_per_eval), current_iter_params)
+  # Separate simulation parameters from binning parameters
+  sim_param_names <- c("n_trials", "mean_v", "a", "mean_z", "s", "dt", "mean_ter", "sv", "sz", "st0", "max_decision_time")
+  sim_args <- current_iter_params[names(current_iter_params) %in% sim_param_names]
+  sim_args[["n_trials"]] <- n_sim_per_eval  # Add n_trials
+  
   if(debug) cat("DEBUG: Simulation args:", paste(names(sim_args), "=", round(unlist(sim_args), 4), collapse=", "), "\n")
   
   current_sim_data <- tryCatch({
