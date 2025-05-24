@@ -1,4 +1,4 @@
-# In R/04_ddm_fitting_utils.R
+# R/04_ddm_fitting_utils.R
 
 #' Calculate Summary Statistics for DDM Fitting
 #'

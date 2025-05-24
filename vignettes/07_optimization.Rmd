@@ -1,8 +1,8 @@
 ---
-title: "Optimization Methods in DDM Fitting: Finding the Best Parameters"
+title: "Optimization Methods in DDM Fitting: Finding the Best Parameters (Parameter Recovery)"
 author: "Dogukan Nami Oztas"
 date: "2025-05-21"
-order: 8
+order: 7
 output:
   html_document:
     toc: true
@@ -11,7 +11,7 @@ output:
     highlight: tango
     df_print: kable
 vignette: >
-  %\VignetteIndexEntry{9. Optimization in DDM Fitting}
+  %\VignetteIndexEntry{Optimization in DDM Fitting}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,6 +25,8 @@ library(knitr)
 # Source functions needed for the DDM fitting example later
 source("../R/03_ddm_simulator_variable.R")
 source("../R/04_ddm_fitting_utils.R")
+source("../R/utils/plot_parameter_comparison.R") 
+source("../R/utils/plot_quantile_probability.R") # Or whichever QPP plotter you finalize
 ```
 
 ## Introduction: From Simulating Models to Understanding Data
@@ -71,14 +73,14 @@ We simulate a target dataset. We'll pretend we don't know the mean_v that genera
 
 ```{r generate_target_for_manual_search}
 # True mean_v for our target data in this manual search example
-true_manual_mean_v_val <- 0.25
+true_manual_mean_v_val <- 0.1
 n_trials_manual_target_val <- 3000
 
 # Other parameters are "known" and fixed for this simple search
 fixed_params_manual_search <- list(
-  a = 1.0,
-  mean_z = 0.5, # a/2
-  s = 0.1,
+  a = 0.7,
+  mean_z = 0.35, # a/2
+  s = 0.25,
   mean_ter = 0.2,
   sv = 0.0, # No across-trial variability for simplicity here
   sz = 0.0,
@@ -115,10 +117,10 @@ search_results <- data.frame(
 cat("Performing manual grid search for mean_v...\n")
 for (v_test in candidate_mean_vs) {
   cat(paste("Testing mean_v =", v_test, "... "))
-  current_params_manual <- fixed_params_manual
+  current_params_manual <- fixed_params_manual_search
   current_params_manual$mean_v <- v_test # Set the candidate v
 
-  set.seed(666) # Use same seed for all candidate sims for fair comparison of v effect
+  set.seed(616) # Use same seed for all candidate sims for fair comparison of v effect
   sim_data_candidate_list_args <- c(list(n_trials = n_sim_per_candidate), current_params_manual)
   sim_data_candidate <- do.call(simulate_diffusion_experiment_variable, sim_data_candidate_list_args)
   
@@ -128,7 +130,7 @@ for (v_test in candidate_mean_vs) {
 
     # Calculate SSD (focus on P(Correct) and median RTs for simplicity here)
     # Ensure names match and handle NAs if a stat isn't available
-    target_subset <- target_stats_manual[c("p_correct", "rt_correct_q50", "rt_error_q50")]
+    target_subset <- target_stats_manual_search[c("p_correct", "rt_correct_q50", "rt_error_q50")]
     candidate_subset <- stats_candidate[c("p_correct", "rt_correct_q50", "rt_error_q50")]
     
     # Only compare where both are non-NA
@@ -159,7 +161,7 @@ kable(search_results[order(search_results$error_score), ], digits = 4, caption =
 
 best_v_manual <- search_results$candidate_v[which.min(search_results$error_score)]
 cat(paste("\nBest candidate mean_v from manual search:", best_v_manual))
-cat(paste("\n(True mean_v was:", true_manual_mean_v, ")\n"))
+cat(paste("\n(True mean_v was:", true_manual_mean_v_val, ")\n"))
 ```
 
 ### **3. Visualizing the Search**
@@ -171,16 +173,16 @@ if(nrow(search_results) > 0 && any(is.finite(search_results$error_score))) {
   ggplot(search_results, aes(x = candidate_v, y = error_score)) +
     geom_line(color="steelblue") +
     geom_point(color="steelblue", size=3) +
-    geom_vline(xintercept = true_manual_mean_v, linetype = "dashed", color = "red") +
+    geom_vline(xintercept = true_manual_mean_v_val, linetype = "dashed", color = "red") +
     geom_point(data = filter(search_results, candidate_v == best_v_manual),
                aes(x = candidate_v, y = error_score), color = "orange", size = 5, shape = 18) +
-    annotate("text", x = true_manual_mean_v, y = max(search_results$error_score, na.rm=T)*0.9, 
+    annotate("text", x = true_manual_mean_v_val, y = max(search_results$error_score, na.rm=T)*0.9, 
              label = "True Value", color = "red", angle = 90, vjust = -0.5, hjust= 0.5) +
     annotate("text", x = best_v_manual, y = min(search_results$error_score, na.rm=T), 
              label = "Best Fit", color = "orange", vjust = 1, hjust = if(best_v_manual > mean(candidate_mean_vs)) 1.2 else -0.2) +
     labs(
       title = "Manual Grid Search for mean_v",
-      subtitle = paste("True mean_v =", true_manual_mean_v, "; Best found =", best_v_manual),
+      subtitle = paste("True mean_v =", true_manual_mean_v_val, "; Best found =", best_v_manual),
       x = "Candidate mean_v",
       y = "Error Score (SSD)"
     ) +
@@ -273,21 +275,21 @@ R's optim() function is a general-purpose optimization tool. We will use the "L-
 ```{r generate_target_data_for_optim_combined}
 # True parameters we want optim() to recover
 true_params_for_optim_recovery <- list(
-  mean_v   = 0.22,
-  a        = 1.1,
-  mean_ter = 0.28
+  mean_v   = 0.12,
+  a        = 0.7,
+  mean_ter = 0.1
 )
 # mean_z will be dynamically true_a / 2
 
 # Parameters held fixed at known "true" values during this recovery
 known_fixed_for_optim_recovery <- list(
-  s        = 0.1,
-  sv       = 0.15,
+  s        = 0.2,
+  sv       = 0.2,
   sz       = 0.0, # Set to 0 to simplify recovery of z via a/2 constraint
   st0      = 0.0, # Set to 0 to simplify recovery of ter
-  dt       = 0.001
+  dt       = 0.01
 )
-n_target_trials_for_optim <- 5000
+n_target_trials_for_optim <- 1000
 
 cat("Generating TARGET data for optim() with true parameters:\n")
 cat("mean_v =", true_params_for_optim_recovery$mean_v,
@@ -331,7 +333,7 @@ initial_guesses_for_optim <- c(
 fixed_params_for_obj_fn_optim <- known_fixed_for_optim_recovery
 
 lower_bounds_for_optim <- c(mean_v = -0.5, a = 0.3, mean_ter = 0.05)
-upper_bounds_for_optim <- c(mean_v = 0.8,  a = 2.5, mean_ter = 0.7)
+upper_bounds_for_optim <- c(mean_v = 0.8,  a = 2.5, mean_ter = 0.3)
 
 cat("Starting optim() to recover mean_v, a, mean_ter (with mean_z = a/2)...\n")
 optim_n_sim_eval_optim <- 1000 # For vignette speed; increase for better results (e.g., 2000-5000)
@@ -392,65 +394,99 @@ cat("Final objective function value (error):", optim_results_final$value, "\n")
 A good way to assess the quality of the fit is to simulate data using our estimated parameters and compare its Quantile Probability Plot (QPP) to the QPP of the original "target" data.
 
 ```{r evaluate_fit_qpp_fitting, fig.width=8, fig.height=5}
-# First, get the estimated parameters from the optimization output
-if (!exists("optim_results_3params")) {
-  stop("Optimization results 'optim_results_3params' not found. Please run the optimization chunk first.")
-}
-estimated_params_3 <- optim_results_3params$par
-names(estimated_params_3) <- param_names_to_optimize_3 # Make sure param_names_to_optimize_3 is available
+# Get the estimated parameters from the optimization output
+estimated_params_from_optim <- optim_results_final$par
+# The names should already be set if initial_guesses_for_optim was a named vector,
+# but it's good practice to ensure they match param_names_to_optimize_via_optim
+names(estimated_params_from_optim) <- param_names_to_optimize_via_optim
+
 
 # Create full parameter set with estimated values for simulation
-final_sim_params_for_qpp_3 <- known_fixed_params_3 # Starts with s, sv, sz, st0, dt
-final_sim_params_for_qpp_3[["mean_v"]]   <- estimated_params_3["mean_v"]
-final_sim_params_for_qpp_3[["a"]]        <- estimated_params_3["a"]
-final_sim_params_for_qpp_3[["mean_ter"]] <- estimated_params_3["mean_ter"]
-final_sim_params_for_qpp_3[["mean_z"]]   <- estimated_params_3["a"] / 2
-
-cat("\nSimulating data with estimated parameters for QPP comparison (3 params recovered)...\n")
-# print(unlist(final_sim_params_for_qpp_3)) # Optional: for debugging params
-
-set.seed(9876)
-# Ensure n_target_trials_3params is available from the chunk where target data was generated
-if (!exists("n_target_trials_3params")) {
-    stop("'n_target_trials_3params' not found. Ensure it's defined in a previous chunk.")
+# Start with the parameters that were fixed during optimization
+final_sim_params_for_qpp <- fixed_params_for_obj_fn_optim 
+# Add/overwrite with the estimated parameters
+for(param_name in param_names_to_optimize_via_optim){
+    final_sim_params_for_qpp[[param_name]] <- estimated_params_from_optim[param_name]
+}
+# Dynamically set mean_z based on the estimated 'a'
+if ("a" %in% names(final_sim_params_for_qpp) && "constrain_z_to_a_div_2" %in% names(optim_results_final$control) && optim_results_final$control$constrain_z_to_a_div_2 == TRUE) {
+    # This check is a bit indirect. Better to assume if 'a' was fit, 'mean_z' needs setting.
+    # We know 'a' was in param_names_to_optimize_via_optim.
+    final_sim_params_for_qpp[["mean_z"]] <- final_sim_params_for_qpp[["a"]] / 2
+} else if (!"mean_z" %in% names(final_sim_params_for_qpp)) {
+    # If mean_z wasn't fixed and wasn't optimized and not constrained, we have an issue.
+    # For this specific setup, we ARE constraining it.
+    warning("mean_z could not be determined for QPP simulation based on estimated 'a'. Using a/2 from fixed 'a' if available, or 0.5.")
+    final_sim_params_for_qpp[["mean_z"]] <- if("a" %in% names(final_sim_params_for_qpp)) final_sim_params_for_qpp[["a"]]/2 else 0.5
 }
 
-fitted_data_for_qpp_3 <- do.call(simulate_diffusion_experiment_variable,
-                                 c(list(n_trials = n_target_trials_3params),
-                                   final_sim_params_for_qpp_3))
+
+cat("\nSimulating data with estimated parameters for QPP comparison...\n")
+cat("Parameters used for 'Fitted Model' simulation:\n")
+# Filter out dt for printing as it's usually very small and fixed
+params_to_print_qpp <- final_sim_params_for_qpp
+params_to_print_qpp$dt <- NULL 
+print(unlist(params_to_print_qpp))
+
+set.seed(9876) # Different seed for this evaluation simulation
+fitted_data_for_qpp <- do.call(simulate_diffusion_experiment_variable,
+                                 c(list(n_trials = n_target_trials_for_optim), # Use same N as target
+                                   final_sim_params_for_qpp))
 
 # Add labels for plotting
-# Ensure target_data_3params_fitting exists
-if (!exists("target_data_3params_fitting")) {
-    stop("Target data 'target_data_3params_fitting' not found.")
-}
-target_data_3params_fitting$model_label <- "Target (True Params)"
-fitted_data_for_qpp_3$model_label <- "Fitted (Estimated Params)"
+target_data_for_optim$model_label <- "Target (True Params)" # Use the correct target data
+fitted_data_for_qpp$model_label <- "Fitted (Estimated Params)"
 
-qpp_fit_comparison_list_3 <- list(
-  "Target Data" = target_data_3params_fitting,
-  "Fitted Model" = fitted_data_for_qpp_3
+qpp_fit_comparison_list <- list(
+  "Target Data" = target_data_for_optim, # Use the correct target data
+  "Fitted Model" = fitted_data_for_qpp
 )
 
 # Use your QPP plotting function
+# Determine which QPP function is available and preferred
+plot_function_to_use <- NULL
 if(exists("plot_parameter_comparison")) {
-  plot_comparison_qpp_3 <- plot_parameter_comparison(
-    data_sim1 = target_data_3params_fitting,
-    data_sim2 = fitted_data_for_qpp_3,
-    param_varied = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
-    # Make rt_xlim robust to NAs or empty data
-    rt_xlim = if(nrow(target_data_3params_fitting)>0 && nrow(fitted_data_for_qpp_3)>0) {
-                 c(0, quantile(c(target_data_3params_fitting$rt, fitted_data_for_qpp_3$rt), 0.995, na.rm=TRUE) * 1.05)
-               } else { NULL }
-  )
-  print(plot_comparison_qpp_3)
+  plot_function_to_use <- "plot_parameter_comparison"
 } else if (exists("plot_qpp")) {
-   plot_qpp(data_list = qpp_fit_comparison_list_3,
-            plot_title = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
-            condition_numbers = FALSE,
-            num_quantiles_fill = 5,
-            ridge_scale = 1
-            )
+  plot_function_to_use <- "plot_qpp"
+}
+
+if(!is.null(plot_function_to_use)) {
+  cat(paste("\nUsing QPP plotter:", plot_function_to_use, "\n"))
+  
+  # Calculate rt_xlim dynamically and robustly
+  rt_data_combined_for_xlim <- bind_rows(
+    target_data_for_optim %>% select(rt),
+    fitted_data_for_qpp %>% select(rt)
+  ) %>% filter(!is.na(rt), is.finite(rt))
+  
+  dynamic_rt_xlim <- NULL
+  if(nrow(rt_data_combined_for_xlim) > 0) {
+    dynamic_rt_xlim <- c(0, quantile(rt_data_combined_for_xlim$rt, 0.995, na.rm=TRUE) * 1.05)
+    if(dynamic_rt_xlim[2] <= 0 || !is.finite(dynamic_rt_xlim[2])) dynamic_rt_xlim <- c(0,2) # Fallback
+  } else {
+    dynamic_rt_xlim <- c(0,2) # Fallback
+  }
+
+  if(plot_function_to_use == "plot_parameter_comparison") {
+      plot_comparison_qpp_final <- plot_parameter_comparison(
+        data_sim1 = target_data_for_optim,
+        data_sim2 = fitted_data_for_qpp,
+        param_varied = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
+        rt_xlim = dynamic_rt_xlim
+      )
+      print(plot_comparison_qpp_final)
+  } else if (plot_function_to_use == "plot_qpp") {
+     plot_qpp_final <- plot_qpp(
+              data_list = qpp_fit_comparison_list, 
+              plot_title = "QPP: Target vs. Fitted (mean_v, a, mean_ter recovered; z=a/2)",
+              condition_numbers = FALSE, # Use names from list "Target Data", "Fitted Model"
+              num_quantiles_fill = 5,
+              rt_lim = dynamic_rt_xlim,
+              ridge_scale = 0.5
+              )
+     print(plot_qpp_final)
+  }
 } else {
   cat("No suitable QPP plotting function found (plot_parameter_comparison or plot_qpp).\n")
 }
