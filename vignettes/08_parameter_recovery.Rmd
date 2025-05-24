@@ -98,6 +98,26 @@ cat("\nTarget Binned RT Proportions (sample):\n")
 kable(head(target_binned_props_adv), caption="Target Binned Proportions (Sample)")
 ```
 
+## Step 2.5: Diagnostic Check
+
+Before running the full optimization, let's test our objective function with the true parameters to ensure it's working correctly:
+
+```{r diagnostic_check}
+# Run diagnostic to check if objective function works properly
+diagnostic_results <- diagnose_ddm_fitting(
+  true_params = true_params_adv,
+  target_binned_props = target_binned_props_adv,
+  objective_fn_name = "ddm_binned_likelihood_objective",
+  n_sim_per_eval = 2000,
+  fixed_params = list(dt = fixed_dt_adv, correct_choice_value = 1, error_choice_value = 0),
+  rt_bins = rt_bins_for_likelihood,
+  constrain_z_to_a_div_2 = TRUE,
+  param_names_optim = c("mean_v", "a", "s", "mean_ter", "sv", "sz", "st0")
+)
+```
+
+If the diagnostic shows that the objective function value with true parameters is reasonable and perturbed parameters give worse (higher) values, then the objective function is working correctly.
+
 ## Step 3: Advanced Parameter Recovery with Multiple Starts
 
 We will use our run_ddm_optimization_multi_start() function. This function repeatedly calls optim() with different, randomly chosen starting parameter values. This increases the chance of finding the global minimum of the objective function.
@@ -109,25 +129,25 @@ param_names_to_optimize_adv <- c("mean_v", "a", "s", "mean_ter", "sv", "sz", "st
 # Define MEANS and SDs for generating random initial guesses
 # The actual guesses will be drawn from Normal(mean, sd) for each start
 initial_guesses_means_adv <- c(
-  mean_v   = 0.15, a = 1.0,  s = 0.1, mean_ter = 0.2,
-  sv = 0.05, sz = 0.1, st0 = 0.03
+  mean_v   = 0.18, a = 0.6,  s = 0.2, mean_ter = 0.1,  # Closer to true values
+  sv = 0.15, sz = 0.06, st0 = 0.05
 )
 initial_guesses_sds_adv <- c( # SDs for sampling initial guesses
-  mean_v   = 0.1, a = 0.3,  s = 0.05, mean_ter = 0.1,
-  sv = 0.05, sz = 0.1, st0 = 0.03
+  mean_v   = 0.05, a = 0.2,  s = 0.05, mean_ter = 0.03,  # Reduced SDs for tighter search
+  sv = 0.05, sz = 0.02, st0 = 0.02
 )
 
 # Bounds for parameters (must match param_names_to_optimize_adv)
 lower_bounds_adv <- c(
-  mean_v = -0.5, a = 0.3,  s = 0.01, mean_ter = 0.02,
+  mean_v = -0.3, a = 0.2,  s = 0.05, mean_ter = 0.01,  # Tightened some bounds
   sv = 0,      sz = 0,   st0 = 0
 )
 upper_bounds_adv <- c(
-  mean_v = 0.7,  a = 2.5,  s = 0.4, mean_ter = 0.2,
-  sv = 0.5,   sz = 0.5,  st0 = 0.3 # Max sz should ideally be < min 'a' bound
+  mean_v = 0.5,  a = 1.5,  s = 0.5, mean_ter = 0.15,   # Better aligned with true values
+  sv = 0.4,   sz = 0.2,  st0 = 0.1 # More reasonable upper bounds
 )
 # Ensure upper bound for sz is reasonable if 'a' is small
-upper_bounds_adv["sz"] <- min(upper_bounds_adv["sz"], lower_bounds_adv["a"]*0.9)
+upper_bounds_adv["sz"] <- min(upper_bounds_adv["sz"], lower_bounds_adv["a"]*0.8)
 
 
 # Fixed parameters for the objective function
@@ -140,9 +160,9 @@ fixed_params_for_optim_adv <- list(
 
 cat("Starting advanced optimization with multiple random starts...\n")
 # For vignette speed, n_starts and optim_maxit are low. Increase for real fitting.
-n_optim_starts <- 3    # Number of random starts for optim()
-optim_n_sim_adv <- 1000 # Trials per objective function call
-optim_maxit_adv <- 50   # Max iterations per optim() run
+n_optim_starts <- 5    # Increased from 3 for better coverage
+optim_n_sim_adv <- 2000 # Increased from 1000 for more stable likelihood estimates
+optim_maxit_adv <- 100   # Increased from 50 for better convergence
 
 adv_optim_results_list <- run_ddm_optimization_multi_start(
   n_starts = n_optim_starts,

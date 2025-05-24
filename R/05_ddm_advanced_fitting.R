@@ -1,5 +1,10 @@
 # R/05_ddm_advanced_fitting.R
 
+# Load required libraries
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  stop("Package 'dplyr' is required but not available")
+}
+
 #' Calculate Binned RT Proportions for DDM Fitting
 #'
 #' Calculates the proportion of responses falling into predefined RT bins
@@ -98,6 +103,7 @@ calculate_binned_rt_proportions <- function(data,
 #' @param constrain_z_to_a_div_2 Logical, if TRUE, mean_z is set to a/2.
 #' @param small_constant_for_ll A small constant added to predicted counts to avoid log(0). Default 1e-6.
 #' @param verbose Logical.
+#' @param debug Logical.
 #'
 #' @return Negative log-likelihood value (to be minimized).
 #' @export
@@ -109,23 +115,56 @@ ddm_binned_likelihood_objective <- function(params_to_test,
                                             rt_bins,
                                             constrain_z_to_a_div_2 = FALSE,
                                             small_constant_for_ll = 1e-6, # To avoid log(0)
-                                            verbose = FALSE) {
+                                            verbose = FALSE,
+                                            debug = FALSE) {
+
+  if(debug) cat("DEBUG: Starting objective function with params:", paste(round(params_to_test, 4), collapse=", "), "\n")
 
   current_iter_params <- fixed_params
   for(i in seq_along(param_names_optim)){
     current_iter_params[[param_names_optim[i]]] <- params_to_test[i]
   }
+  
+  if(debug) cat("DEBUG: Current params after assignment:", paste(names(current_iter_params), "=", round(unlist(current_iter_params), 4), collapse=", "), "\n")
+  
   if (constrain_z_to_a_div_2) {
-    if (!"a" %in% names(current_iter_params)) stop("'a' must be defined if constraining z.")
+    if (!"a" %in% names(current_iter_params)) {
+      if(debug) cat("DEBUG: ERROR - 'a' not found for z constraint\n")
+      stop("'a' must be defined if constraining z.")
+    }
     current_iter_params[["mean_z"]] <- current_iter_params[["a"]] / 2
+    if(debug) cat("DEBUG: Set mean_z =", current_iter_params[["mean_z"]], "\n")
   }
+  
+  # Validate required parameters for simulation
+  required_params <- c("mean_v", "a", "mean_z", "s", "dt", "mean_ter")
+  missing_params <- required_params[!required_params %in% names(current_iter_params)]
+  if(length(missing_params) > 0) {
+    if(debug) cat("DEBUG: Missing required parameters:", paste(missing_params, collapse=", "), "\n")
+    return(1e7)
+  }
+  
+  # Set default values for optional variability parameters if not present
+  if(!"sv" %in% names(current_iter_params)) current_iter_params[["sv"]] <- 0
+  if(!"sz" %in% names(current_iter_params)) current_iter_params[["sz"]] <- 0
+  if(!"st0" %in% names(current_iter_params)) current_iter_params[["st0"]] <- 0
 
   sim_args <- c(list(n_trials = n_sim_per_eval), current_iter_params)
+  if(debug) cat("DEBUG: Simulation args:", paste(names(sim_args), "=", round(unlist(sim_args), 4), collapse=", "), "\n")
+  
   current_sim_data <- tryCatch({
     do.call(simulate_diffusion_experiment_variable, sim_args)
-  }, error = function(e) { NULL })
+  }, error = function(e) { 
+    if(debug) cat("DEBUG: Simulation failed with error:", conditionMessage(e), "\n")
+    return(NULL) 
+  })
 
-  if (is.null(current_sim_data) || nrow(current_sim_data) == 0) return(1e7) # Large error
+  if (is.null(current_sim_data) || nrow(current_sim_data) == 0) {
+    if(debug) cat("DEBUG: No simulation data returned, returning large error\n")
+    return(1e7) # Large error
+  }
+  
+  if(debug) cat("DEBUG: Simulation successful, got", nrow(current_sim_data), "trials\n")
 
   # Calculate binned proportions for the *current simulated data*
   sim_binned_props <- calculate_binned_rt_proportions(
@@ -165,14 +204,22 @@ ddm_binned_likelihood_objective <- function(params_to_test,
   # Add small constant to predicted probabilities to avoid log(0)
   comparison_df$sim_prob_overall <- pmax(comparison_df$sim_prob_overall, small_constant_for_ll)
 
+  # Ensure probabilities are properly normalized (should sum to 1)
+  total_prob <- sum(comparison_df$sim_prob_overall, na.rm = TRUE)
+  if(abs(total_prob - 1.0) > 0.1) { # If far from 1, normalize
+    comparison_df$sim_prob_overall <- comparison_df$sim_prob_overall / total_prob
+    # Re-apply minimum to avoid log(0) after normalization
+    comparison_df$sim_prob_overall <- pmax(comparison_df$sim_prob_overall, small_constant_for_ll)
+  }
+
   # Calculate log-likelihood (multinomial)
   # LL = sum(N_observed_in_bin * log(P_predicted_for_bin))
   # We want to MINIMIZE negative LL
   neg_log_likelihood <- -sum(comparison_df$target_n * log(comparison_df$sim_prob_overall), na.rm = TRUE)
 
   # Penalty for not producing choices of a type present in target
-  target_has_corrects <- any(target_binned_props$response_type == "Correct" & target_binned_props$target_n > 0)
-  target_has_errors   <- any(target_binned_props$response_type == "Error" & target_binned_props$target_n > 0)
+  target_has_corrects <- any(target_binned_props$response_type == "Correct" & target_binned_props$observed_n > 0)
+  target_has_errors   <- any(target_binned_props$response_type == "Error" & target_binned_props$observed_n > 0)
 
   if(target_has_corrects && sim_p_correct < small_constant_for_ll*10) neg_log_likelihood <- neg_log_likelihood + 1000
   if(target_has_errors && sim_p_error < small_constant_for_ll*10) neg_log_likelihood <- neg_log_likelihood + 1000
@@ -275,7 +322,7 @@ run_ddm_optimization_multi_start <- function(n_starts = 5,
         lower = lower_bounds_ordered,
         upper = upper_bounds_ordered,
         control = list(maxit = optim_maxit, trace = 0, # trace=0 for less verbose during multi-start
-                       parscale = abs(current_initial_guesses) + 0.05, factr=1e7)
+                       parscale = abs(current_initial_guesses) + 0.05, factr=1e4) # Reduced factr for better precision
       )
     }, error = function(e) {
       cat("Error during optim run ", i_start, ": ", conditionMessage(e), "\n")
@@ -321,4 +368,85 @@ run_ddm_optimization_multi_start <- function(n_starts = 5,
 
 
   return(list(best_optim_result = best_result_obj, all_runs_summary = summary_df_all_runs))
+}
+
+
+#' Diagnostic Function for DDM Fitting Issues
+#'
+#' Tests the objective function with true parameters to help diagnose fitting problems.
+#'
+#' @param true_params Named list of true DDM parameters
+#' @param target_binned_props Target binned proportions
+#' @param objective_fn_name Name of objective function to test
+#' @param n_sim_per_eval Number of simulation trials
+#' @param fixed_params Fixed parameters
+#' @param rt_bins RT bins for likelihood calculation
+#' @param constrain_z_to_a_div_2 Whether to constrain mean_z = a/2
+#' @param param_names_optim Names of parameters being optimized
+#'
+#' @return List with diagnostic information
+#' @export
+diagnose_ddm_fitting <- function(true_params,
+                                 target_binned_props,
+                                 objective_fn_name = "ddm_binned_likelihood_objective",
+                                 n_sim_per_eval = 2000,
+                                 fixed_params = list(dt = 0.001),
+                                 rt_bins,
+                                 constrain_z_to_a_div_2 = TRUE,
+                                 param_names_optim) {
+  
+  cat("=== DDM Fitting Diagnostics ===\n")
+  
+  # Extract true values for optimized parameters
+  true_values <- sapply(param_names_optim, function(p) true_params[[p]])
+  
+  cat("True parameter values:\n")
+  print(round(true_values, 4))
+  
+  # Test objective function with true parameters
+  objective_function <- get(objective_fn_name)
+  
+  true_obj_value <- objective_function(
+    params_to_test = true_values,
+    target_binned_props = target_binned_props,
+    param_names_optim = param_names_optim,
+    n_sim_per_eval = n_sim_per_eval,
+    fixed_params = fixed_params,
+    rt_bins = rt_bins,
+    constrain_z_to_a_div_2 = constrain_z_to_a_div_2,
+    verbose = FALSE,
+    debug = TRUE  # Enable debugging for diagnostics
+  )
+  
+  cat("\nObjective function value with TRUE parameters:", round(true_obj_value, 4), "\n")
+  
+  # Test with slightly perturbed parameters
+  perturbed_values <- true_values * (1 + rnorm(length(true_values), 0, 0.1))
+  perturbed_obj_value <- objective_function(
+    params_to_test = perturbed_values,
+    target_binned_props = target_binned_props,
+    param_names_optim = param_names_optim,
+    n_sim_per_eval = n_sim_per_eval,
+    fixed_params = fixed_params,
+    rt_bins = rt_bins,
+    constrain_z_to_a_div_2 = constrain_z_to_a_div_2,
+    verbose = FALSE,
+    debug = TRUE  # Enable debugging for diagnostics
+  )
+  
+  cat("Objective function value with PERTURBED parameters:", round(perturbed_obj_value, 4), "\n")
+  cat("Difference (should be positive if objective function working):", round(perturbed_obj_value - true_obj_value, 4), "\n")
+  
+  # Check target data properties
+  cat("\nTarget data summary:\n")
+  cat("Number of bins:", nrow(target_binned_props), "\n")
+  cat("Response types:", unique(target_binned_props$response_type), "\n")
+  cat("Total target counts:", sum(target_binned_props$observed_n), "\n")
+  
+  return(list(
+    true_obj_value = true_obj_value,
+    perturbed_obj_value = perturbed_obj_value,
+    difference = perturbed_obj_value - true_obj_value,
+    target_summary = target_binned_props
+  ))
 }
