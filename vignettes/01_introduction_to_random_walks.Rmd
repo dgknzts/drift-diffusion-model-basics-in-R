@@ -16,150 +16,293 @@ knitr::opts_chunk$set(
   echo = TRUE,
   message = FALSE,
   warning = FALSE,
-  fig.align = 'center'
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
 )
-# Load necessary packages
+
+# Load necessary packages with error handling
+required_packages <- c("ggplot2", "dplyr", "gridExtra", "scales")
+
+for (pkg in required_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    stop(paste("Package", pkg, "is required but not installed. Please install it using: install.packages('", pkg, "')", sep = ""))
+  }
+}
+
 library(ggplot2)
-library(dplyr) # For data manipulation, if needed
+library(dplyr)
+library(gridExtra)
+library(scales)
 
 # Source the functions from your R script
 # Adjust the path if your Rmd file is in a different location relative to the R script
 source("../R/01_random_walk_simulator.R")
+
+# Set a consistent theme for all plots
+theme_set(theme_minimal(base_size = 12))
 ```
 
 ## What is a Random Walk?
 
-A random walk is a mathematical object, known as a stochastic or random process, that describes a path that consists of a succession of random steps on some mathematical space. In simpler terms, it's a process where the next position is determined by a random step from the current position.
+A **random walk** is a mathematical object, known as a stochastic or random process, that describes a path consisting of a succession of random steps. In our context, we'll focus on **one-dimensional random walks** where a particle (representing evidence) moves along a line, taking random steps at each time point.
 
-Random walks are fundamental to understanding more complex models like the Diffusion Decision Model (DDM), where they represent the noisy accumulation of evidence over time leading to a decision.
+### Mathematical Foundation
 
-In this vignette, we'll explore a simple one-dimensional random walk where evidence accumulates until it reaches one of two decision thresholds.
+The discrete-time random walk model can be mathematically expressed as:
+
+$$E_{t+1} = E_t + \mu + \epsilon_t$$
+
+where: - $E_t$ is the evidence at time $t$ - $\mu$ is the **drift** (average step size per time unit) - $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$ is random noise (Gaussian white noise)
+
+The process continues until the evidence crosses one of two decision boundaries: - **Upper threshold**: $E_t \geq +a$ → Decision "A" (choice = 1) - **Lower threshold**: $E_t \leq -a$ → Decision "B" (choice = -1)
+
+### Connection to Decision Making
+
+Random walks are fundamental to understanding **decision-making models**, particularly the **Diffusion Decision Model (DDM)**. In psychological terms:
+
+-   **Evidence accumulation**: Information gradually builds up over time
+-   **Decision thresholds**: The amount of evidence needed to make a decision
+-   **Drift**: Bias toward one option over another
+-   **Noise**: Uncertainty and variability in the decision process
 
 ## Simulating a Single Random Walk Trial
 
-We have created a function simulate_random_walk_trial() in R/01_random_walk_simulator.R to simulate a single instance of this process.
+Let's start by understanding how a single decision unfolds. We'll use the `simulate_random_walk_trial()` function to simulate individual trials and visualize the evidence accumulation process.
 
-**Key Parameters:**
-
--   start_point: The initial value of the evidence (default: 0).
-
--   threshold: The (positive) value of the decision boundaries. A decision is made when the absolute evidence reaches this threshold (default: 10).
-
--   drift: The average amount added to the evidence at each step. A positive drift biases the walk towards the upper threshold, and a negative drift biases it towards the lower threshold (default: 0.1).
-
--   sd_step: The standard deviation of the step size, representing the noise in the accumulation process (default: 1).
-
--   max_steps: The maximum number of steps allowed before a trial is terminated (to prevent infinite loops if a threshold is never reached) (default: 10000).
-
-Let's simulate a few single trials:
+### Basic Single Trial Simulation
 
 ```{r single_rw_trials}
 set.seed(123) # For reproducibility
 
-trial1 <- simulate_random_walk_trial(drift = 0.2, threshold = 5, sd_step = 1)
-print(paste("Trial 1: Choice =", trial1$choice, ", RT (steps) =", trial1$rt))
+# Example 1: Positive drift (bias toward upper threshold)
+trial1 <- simulate_random_walk_trial(drift = 0.2, threshold = 5, sd_step = 1, return_path = TRUE)
+cat("Trial 1 (positive drift):\n")
+cat("Choice =", trial1$choice, ", RT (steps) =", trial1$rt, "\n\n")
 
-trial2 <- simulate_random_walk_trial(drift = -0.1, threshold = 5, sd_step = 1)
-print(paste("Trial 2: Choice =", trial2$choice, ", RT (steps) =", trial2$rt))
+# Example 2: Negative drift (bias toward lower threshold)
+trial2 <- simulate_random_walk_trial(drift = -0.15, threshold = 5, sd_step = 1, return_path = TRUE)
+cat("Trial 2 (negative drift):\n")
+cat("Choice =", trial2$choice, ", RT (steps) =", trial2$rt, "\n\n")
 
-trial3 <- simulate_random_walk_trial(drift = 0.01, threshold = 5, sd_step = 1, max_steps = 50) # Forcing a potential non-decision
-print(paste("Trial 3: Choice =", trial3$choice, ", RT (steps) =", trial3$rt))
+# Example 3: No drift (unbiased)
+trial3 <- simulate_random_walk_trial(drift = 0, threshold = 5, sd_step = 1, return_path = TRUE)
+cat("Trial 3 (no drift):\n")
+cat("Choice =", trial3$choice, ", RT (steps) =", trial3$rt, "\n")
 ```
 
-The choice output is 1 for the upper threshold, -1 for the lower threshold, and NA if max_steps was reached. The rt is the number of steps taken.
+### Visualizing Evidence Accumulation Paths
+
+The power of the random walk model becomes clear when we visualize how evidence accumulates over time:
+
+```{r visualize_paths, fig.height=8}
+# Create plots for the three trials
+plot_list <- list()
+
+# Trial 1: Positive drift
+plot_list[[1]] <- {
+  df1 <- data.frame(
+    time = 0:(length(trial1$evidence_path) - 1),
+    evidence = trial1$evidence_path
+  )
+  
+  ggplot(df1, aes(x = time, y = evidence)) +
+    geom_line(color = "blue", size = 1) +
+    geom_hline(yintercept = c(-5, 5), linetype = "dashed", color = "red", size = 1) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_point(data = df1[nrow(df1), ], color = "red", size = 3) +
+    labs(title = "Trial 1: Positive Drift (μ = 0.2)",
+         subtitle = paste("Choice:", trial1$choice, "| RT:", trial1$rt, "steps"),
+         x = "Time Steps", y = "Evidence") +
+    ylim(-6, 6) +
+    annotate("text", x = max(df1$time) * 0.1, y = 5.5, label = "Upper Threshold", color = "red") +
+    annotate("text", x = max(df1$time) * 0.1, y = -5.5, label = "Lower Threshold", color = "red")
+}
+
+# Trial 2: Negative drift
+plot_list[[2]] <- {
+  df2 <- data.frame(
+    time = 0:(length(trial2$evidence_path) - 1),
+    evidence = trial2$evidence_path
+  )
+  
+  ggplot(df2, aes(x = time, y = evidence)) +
+    geom_line(color = "darkgreen", size = 1) +
+    geom_hline(yintercept = c(-5, 5), linetype = "dashed", color = "red", size = 1) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_point(data = df2[nrow(df2), ], color = "red", size = 3) +
+    labs(title = "Trial 2: Negative Drift (μ = -0.15)",
+         subtitle = paste("Choice:", trial2$choice, "| RT:", trial2$rt, "steps"),
+         x = "Time Steps", y = "Evidence") +
+    ylim(-6, 6)
+}
+
+# Trial 3: No drift
+plot_list[[3]] <- {
+  df3 <- data.frame(
+    time = 0:(length(trial3$evidence_path) - 1),
+    evidence = trial3$evidence_path
+  )
+  
+  ggplot(df3, aes(x = time, y = evidence)) +
+    geom_line(color = "purple", size = 1) +
+    geom_hline(yintercept = c(-5, 5), linetype = "dashed", color = "red", size = 1) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_point(data = df3[nrow(df3), ], color = "red", size = 3) +
+    labs(title = "Trial 3: No Drift (μ = 0)",
+         subtitle = paste("Choice:", trial3$choice, "| RT:", trial3$rt, "steps"),
+         x = "Time Steps", y = "Evidence") +
+    ylim(-6, 6)
+}
+
+# Arrange plots
+do.call(grid.arrange, c(plot_list, ncol = 1))
+```
+
+**Key Observations:** - **Positive drift** tends to push evidence toward the upper threshold - **Negative drift** tends to push evidence toward the lower threshold\
+- **No drift** creates a symmetric random walk where either outcome is equally likely - The **red dot** shows where the threshold was crossed - **Noise** creates the zigzag pattern in the evidence accumulation
+
+## Exploring Parameter Effects
+
+Let's explore how different parameters affect the random walk behavior:
+
+```{r parameter_exploration, fig.height=10}
+set.seed(456)
+
+# Generate multiple trials with different parameters
+param_trials <- list(
+  low_noise = simulate_random_walk_trial(drift = 0.1, threshold = 5, sd_step = 0.5, return_path = TRUE),
+  high_noise = simulate_random_walk_trial(drift = 0.1, threshold = 5, sd_step = 2, return_path = TRUE),
+  low_threshold = simulate_random_walk_trial(drift = 0.1, threshold = 2, sd_step = 1, return_path = TRUE),
+  high_threshold = simulate_random_walk_trial(drift = 0.1, threshold = 8, sd_step = 1, return_path = TRUE)
+)
+
+# Create comparison plots
+param_plots <- list()
+
+for (i in 1:length(param_trials)) {
+  trial_name <- names(param_trials)[i]
+  trial_data <- param_trials[[i]]
+  
+  df_temp <- data.frame(
+    time = 0:(length(trial_data$evidence_path) - 1),
+    evidence = trial_data$evidence_path
+  )
+  
+  # Determine threshold value for plotting
+  threshold_val <- switch(trial_name,
+                         "low_threshold" = 2,
+                         "high_threshold" = 8,
+                         5)  # default
+  
+  param_plots[[i]] <- ggplot(df_temp, aes(x = time, y = evidence)) +
+    geom_line(color = "steelblue", size = 1) +
+    geom_hline(yintercept = c(-threshold_val, threshold_val), 
+               linetype = "dashed", color = "red", size = 1) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_point(data = df_temp[nrow(df_temp), ], color = "red", size = 3) +
+    labs(title = switch(trial_name,
+                       "low_noise" = "Low Noise (σ = 0.5)",
+                       "high_noise" = "High Noise (σ = 2.0)", 
+                       "low_threshold" = "Low Threshold (a = 2)",
+                       "high_threshold" = "High Threshold (a = 8)"),
+         subtitle = paste("Choice:", trial_data$choice, "| RT:", trial_data$rt, "steps"),
+         x = "Time Steps", y = "Evidence") +
+    ylim(-10, 10)
+}
+
+do.call(grid.arrange, c(param_plots, ncol = 2))
+```
 
 ## Simulating a Random Walk Experiment
 
-To understand the behavior of the random walk model, we typically simulate many trials. The simulate_random_walk_experiment() function handles this. It takes n_trials as an argument and any other parameters that simulate_random_walk_trial() accepts.
-
-Let's simulate an experiment with 1000 trials:
+To understand the statistical properties of the random walk model, we need to simulate many trials. Let's conduct a comprehensive experiment:
 
 ```{r rw_experiment}
-set.seed(456)
+set.seed(789)
 n_sim_trials <- 1000
+
+# Simulate experiment with moderate parameters
 rw_data <- simulate_random_walk_experiment(
   n_trials = n_sim_trials,
   threshold = 10,
-  drift = 0.05, # A slight positive drift
-  sd_step = 1.5
+  drift = 0.05, # Slight positive drift
+  sd_step = 1.5,
+  show_progress = FALSE
 )
 
-# Display the first few rows of the simulated data
-# Using kable for nicer printing if knitr is rendering to HTML
-knitr::kable(head(rw_data), caption = "First 6 trials of the simulated random walk experiment.")
-```
+# Display basic statistics
+cat("Experiment Summary:\n")
+cat("Total trials simulated:", nrow(rw_data), "\n")
+cat("Trials with valid decisions:", sum(!is.na(rw_data$choice)), "\n")
+cat("Proportion of valid decisions:", round(mean(!is.na(rw_data$choice)), 3), "\n\n")
 
-The resulting rw_data is a data frame containing the trial number, choice, and rt for each simulated trial.
+# Display the first few rows
+knitr::kable(head(rw_data), 
+             caption = "First 6 trials of the simulated random walk experiment.")
+```
 
 ### Analyzing Experiment Results
 
-#### **1. Choice Proportions**
+#### **1. Choice Proportions and Accuracy**
 
-We can calculate the proportion of choices for the upper and lower thresholds.
+```{r visualize_choice_proportions, fig.height=5}
+# Filter out NA choices and create summary
+valid_choices <- rw_data %>% 
+  filter(!is.na(choice)) %>%
+  mutate(choice_label = factor(choice, 
+                              levels = c(-1, 1), 
+                              labels = c("Lower Threshold (-1)", "Upper Threshold (1)")))
 
-```{r visualize_choice_proportions}
-# Filter out NA choices (if any trials hit max_steps)
-valid_rw_choices <- rw_data %>% filter(!is.na(choice))
+if(nrow(valid_choices) > 0) {
+  # Calculate choice proportions
+  choice_summary <- valid_choices %>%
+    count(choice_label) %>%
+    mutate(proportion = n / sum(n))
 
-if(nrow(valid_rw_choices) > 0) {
-  choice_summary <- valid_rw_choices %>%
-    count(choice) %>%
-    mutate(
-      proportion = n / sum(n),
-      choice_label = factor(choice, levels = c(-1, 1), labels = c("Lower Threshold (-1)", "Upper Threshold (1)"))
-    )
-
-  print("Choice Proportions:")
-  knitr::kable(select(choice_summary, choice_label, n, proportion), 
+  # Create summary table
+  knitr::kable(choice_summary %>% 
+               select(choice_label, n, proportion), 
                col.names = c("Choice Outcome", "Count (N)", "Proportion"),
-               caption = "Summary of Choice Proportions", digits = 3)
+               caption = "Summary of Choice Proportions", 
+               digits = 3)
 
-  # Bar plot of counts or proportions
+  # Create visualization
   p_choice <- ggplot(choice_summary, aes(x = choice_label, y = proportion, fill = choice_label)) +
-    geom_bar(stat = "identity", color = "black", alpha = 0.8) +
-    geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), vjust = -0.3, size = 3.5) +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1), expand = expansion(mult=c(0, 0.05))) +
-    labs(
-      title = "Choice Proportions in Random Walk",
-      x = "Outcome",
-      y = "Proportion of Trials"
-    ) +
-    theme_minimal(base_size = 11) +
-    theme(legend.position = "none") # Fill color is redundant with x-axis
+    geom_bar(stat = "identity", color = "black", alpha = 0.8, width = 0.6) +
+    geom_text(aes(label = percent(proportion, accuracy = 0.1)), 
+              vjust = -0.3, size = 4, fontface = "bold") +
+    scale_y_continuous(labels = percent_format(accuracy = 1), 
+                      limits = c(0, max(choice_summary$proportion) * 1.1)) +
+    scale_fill_manual(values = c("tomato", "lightblue")) +
+    labs(title = "Choice Proportions in Random Walk Experiment",
+         subtitle = paste("n =", nrow(valid_choices), "trials with positive drift (μ = 0.05)"),
+         x = "Decision Outcome", y = "Proportion of Trials") +
+    theme(legend.position = "none")
+  
   print(p_choice)
+  
+  # Statistical test for bias
+  if (length(unique(valid_choices$choice)) == 2) {
+    bias_test <- binom.test(sum(valid_choices$choice == 1), nrow(valid_choices), p = 0.5)
+    cat("\nStatistical Test for Bias:\n")
+    cat("Binomial test p-value:", round(bias_test$p.value, 6), "\n")
+    cat("95% CI for upper threshold proportion:", 
+        round(bias_test$conf.int[1], 3), "-", round(bias_test$conf.int[2], 3), "\n")
+  }
 } else {
-  print("No valid choices to summarize (all trials may have resulted in NA choice).")
+  cat("No valid choices to analyze (all trials may have resulted in timeouts).\n")
 }
 ```
 
-With a slight positive drift (drift = 0.05), we typically expect a higher proportion of choices for the upper threshold (Choice 1).
+With a positive drift (μ = 0.05), we expect more choices for the upper threshold, which represents the "correct" or "preferred" response in a decision-making context.
 
 #### **2. Reaction Time (RT) Distributions**
 
-The distribution of reaction times (number of steps taken to reach a threshold) is another key output.
-
-```{r visualize_rt_distributions}
-# Filter out NA RTs (if any trials hit max_steps and thus had NA choice/rt)
-valid_rw_rts <- rw_data %>% filter(!is.na(rt) & !is.na(choice)) %>%
-                 mutate(choice_label = factor(choice, levels = c(-1, 1), labels = c("Lower Threshold (-1)", "Upper Threshold (1)")))
-
-
-if(nrow(valid_rw_rts) > 0) {
-  p_rts <- ggplot(valid_rw_rts, aes(x = rt, fill = choice_label)) +
-    geom_histogram(binwidth = 5, alpha = 0.7, position = "identity", color = "black") +
-    facet_wrap(~choice_label, scales = "free_y", ncol = 1) + # Separate plots for each choice
-    labs(
-      title = "Random Walk RT Distributions",
-      x = "Reaction Time (Number of Steps)",
-      y = "Frequency (Count)",
-      fill = "Choice Outcome"
-    ) +
-    theme_minimal(base_size = 11) +
-    theme(legend.position = "top")
-  print(p_rts)
-
-  # Summary statistics for RTs
-  rt_summary <- valid_rw_rts %>%
+```{r visualize_rt_distributions, fig.height=8}
+if(nrow(valid_choices) > 0) {
+  # RT summary statistics
+  rt_summary <- valid_choices %>%
     group_by(choice_label) %>%
     summarise(
       N = n(),
@@ -170,19 +313,196 @@ if(nrow(valid_rw_rts) > 0) {
       Max_RT = max(rt, na.rm = TRUE),
       .groups = "drop"
     )
-  knitr::kable(rt_summary, caption = "Summary Statistics for RTs by Choice Outcome", digits = 1)
   
-} else {
-  print("No valid RTs to plot or summarize (all trials may have resulted in NA RTs).")
+  knitr::kable(rt_summary, 
+               caption = "Summary Statistics for RTs by Choice Outcome")
+  
+  # Create RT distribution plots
+  p1 <- ggplot(valid_choices, aes(x = rt, fill = choice_label)) +
+    geom_histogram(bins = 30, alpha = 0.7, color = "black") +
+    facet_wrap(~choice_label, scales = "free_y", ncol = 1) +
+    scale_fill_manual(values = c("tomato", "lightblue")) +
+    labs(title = "RT Distributions by Choice Outcome",
+         x = "Reaction Time (Steps)", y = "Frequency",
+         fill = "Choice") +
+    theme(legend.position = "none")
+  
+  # Box plot comparison
+  p2 <- ggplot(valid_choices, aes(x = choice_label, y = rt, fill = choice_label)) +
+    geom_boxplot(alpha = 0.7, width = 0.6) +
+    geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) +
+    scale_fill_manual(values = c("tomato", "lightblue")) +
+    labs(title = "RT Comparison Between Choices",
+         x = "Choice Outcome", y = "Reaction Time (Steps)") +
+    theme(legend.position = "none")
+  
+  # Density overlay
+  p3 <- ggplot(valid_choices, aes(x = rt, color = choice_label, fill = choice_label)) +
+    geom_density(alpha = 0.3, size = 1) +
+    scale_color_manual(values = c("darkred", "darkblue")) +
+    scale_fill_manual(values = c("tomato", "lightblue")) +
+    labs(title = "RT Density Distributions",
+         x = "Reaction Time (Steps)", y = "Density",
+         color = "Choice", fill = "Choice") +
+    theme(legend.position = "bottom")
+  
+  # Arrange plots
+  grid.arrange(p1, arrangeGrob(p2, p3, ncol = 2), ncol = 1, heights = c(2, 1))
+  
+  # Statistical comparison
+  if (length(unique(valid_choices$choice)) == 2) {
+    rt_test <- t.test(rt ~ choice, data = valid_choices)
+    cat("\nRT Comparison Between Choices:\n")
+    cat("t-test p-value:", round(rt_test$p.value, 6), "\n")
+    cat("Mean difference (Upper - Lower):", round(rt_test$estimate[1] - rt_test$estimate[2], 2), "steps\n")
+  }
 }
 ```
 
-**Observations:**
+**Key Insights from RT Analysis:** - RT distributions are typically **positively skewed** (long right tail) - **Faster RTs** often occur for the choice favored by drift - **Slower RTs** may indicate more difficult decisions or unfavorable drift - The **variability** in RTs reflects the stochastic nature of the process
 
--   The RT distributions are typically positively skewed (a long tail towards slower RTs).
+#### **3. Speed-Accuracy Trade-off**
 
--   The mean RT for the more frequent choice (due to drift) might be faster or slower than the less frequent one, depending on other parameters.
+```{r speed_accuracy_analysis, fig.height=5}
+if(nrow(valid_choices) > 0) {
+  # Define "correct" responses as upper threshold (since drift is positive)
+  accuracy_data <- valid_choices %>%
+    mutate(
+      correct = choice == 1,  # Upper threshold is "correct" with positive drift
+      rt_bin = cut(rt, breaks = quantile(rt, probs = seq(0, 1, 0.2)), 
+                   include.lowest = TRUE, labels = c("Fastest", "Fast", "Medium", "Slow", "Slowest"))
+    )
+  
+  # Calculate accuracy by RT bins
+  speed_acc_summary <- accuracy_data %>%
+    group_by(rt_bin) %>%
+    summarise(
+      N = n(),
+      Accuracy = mean(correct),
+      Mean_RT = mean(rt),
+      .groups = "drop"
+    ) %>%
+    filter(!is.na(rt_bin))
+  
+  knitr::kable(speed_acc_summary, 
+               caption = "Speed-Accuracy Analysis: Accuracy by RT Quintiles",
+               digits = 3)
+  
+  # Visualize speed-accuracy trade-off
+  p_speed_acc <- ggplot(speed_acc_summary, aes(x = Mean_RT, y = Accuracy)) +
+    geom_point(aes(size = N), color = "steelblue", alpha = 0.8) +
+    geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "dashed") +
+    scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+    labs(title = "Speed-Accuracy Trade-off",
+         subtitle = "Relationship between reaction time and decision accuracy",
+         x = "Mean Reaction Time (Steps)", 
+         y = "Accuracy (Proportion Correct)",
+         size = "N Trials") +
+    theme(legend.position = "bottom")
+  
+  print(p_speed_acc)
+}
+```
 
-## Conclusion
+## Parameter Sensitivity Analysis
 
-This vignette provided a basic introduction to simulating a simple one-dimensional random walk in R. We explored how to simulate individual trials and entire experiments, and how to analyze fundamental outputs like choice proportions and RT distributions. Understanding the random walk is a stepping stone to grasping the more nuanced Diffusion Decision Model, which operates in continuous time and incorporates additional parameters to model human decision-making more accurately.
+Let's explore how different parameter values affect model behavior:
+
+```{r parameter_sensitivity, fig.height=10}
+set.seed(999)
+
+# Define parameter combinations to test
+param_combinations <- expand.grid(
+  drift = c(-0.1, 0, 0.1, 0.2),
+  threshold = c(5, 10),
+  sd_step = c(0.5, 1.5)
+)
+
+# Simulate smaller experiments for each combination
+sensitivity_results <- list()
+
+for (i in 1:nrow(param_combinations)) {
+  params <- param_combinations[i, ]
+  
+  sim_data <- simulate_random_walk_experiment(
+    n_trials = 200,  # Smaller n for speed
+    drift = params$drift,
+    threshold = params$threshold,
+    sd_step = params$sd_step,
+    show_progress = FALSE
+  )
+  
+  # Calculate summary statistics
+  valid_trials <- sim_data[!is.na(sim_data$choice), ]
+  
+  if (nrow(valid_trials) > 0) {
+    sensitivity_results[[i]] <- data.frame(
+      drift = params$drift,
+      threshold = params$threshold,
+      sd_step = params$sd_step,
+      prop_upper = mean(valid_trials$choice == 1),
+      mean_rt = mean(valid_trials$rt),
+      prop_valid = nrow(valid_trials) / 200
+    )
+  }
+}
+
+# Combine results
+sensitivity_df <- do.call(rbind, sensitivity_results)
+
+# Create visualizations
+if (nrow(sensitivity_df) > 0) {
+  # Choice proportion heatmap
+  p1 <- ggplot(sensitivity_df, aes(x = factor(drift), y = factor(threshold), fill = prop_upper)) +
+    geom_tile(color = "white") +
+    facet_wrap(~paste("Noise σ =", sd_step)) +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0.5,
+                        labels = percent_format()) +
+    labs(title = "Choice Bias (Proportion Choosing Upper Threshold)",
+         x = "Drift (μ)", y = "Threshold (a)", fill = "Prop. Upper") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Mean RT heatmap  
+  p2 <- ggplot(sensitivity_df, aes(x = factor(drift), y = factor(threshold), fill = mean_rt)) +
+    geom_tile(color = "white") +
+    facet_wrap(~paste("Noise σ =", sd_step)) +
+    scale_fill_gradient(low = "yellow", high = "darkred") +
+    labs(title = "Mean Reaction Time",
+         x = "Drift (μ)", y = "Threshold (a)", fill = "Mean RT") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  grid.arrange(p1, p2, ncol = 1)
+}
+```
+
+## Summary and Next Steps
+
+This vignette introduced the fundamental concepts of random walks and their implementation in R. We've covered:
+
+### **Key Concepts Learned:**
+
+1.  **Mathematical foundation** of discrete-time random walks
+2.  **Parameter effects**: drift, threshold, and noise
+3.  **Simulation methods** for single trials and experiments\
+4.  **Statistical analysis** of choice proportions and RT distributions
+5.  **Speed-accuracy trade-offs** in decision making
+6.  **Parameter sensitivity** analysis
+
+### **Important Insights:**
+
+-   **Drift** creates bias toward one choice option
+-   **Threshold** controls the speed-accuracy trade-off
+-   **Noise** increases variability in both choices and RTs
+-   **RT distributions** are typically positively skewed
+-   The model exhibits realistic **speed-accuracy relationships**
+
+### **Connection to Cognitive Science:**
+
+Random walks provide the foundation for understanding: - **Evidence accumulation** in perceptual decisions - **Response time** distributions in choice tasks - **Confidence** and decision certainty - **Individual differences** in decision-making strategies
+
+### **Next Steps:**
+
+In subsequent vignettes, we'll explore: - **Continuous-time diffusion models** (DDM) - **Parameter estimation** from behavioral data - **Model comparison** and validation techniques\
+- **Advanced DDM variants** with additional parameters
+
+The random walk model serves as an excellent stepping stone to understanding more sophisticated models of human decision-making while providing intuitive insights into the cognitive processes underlying choice behavior.
