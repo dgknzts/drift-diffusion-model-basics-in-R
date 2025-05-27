@@ -70,7 +70,7 @@ print(unlist(true_parameters))
 # Generate target dataset with these parameters
 set.seed(12345)  # For reproducibility
 target_data <- simulate_diffusion_experiment_variable(
-  n_trials = 3000,
+  n_trials = 1000,
   mean_v   = true_parameters$mean_v,
   a        = true_parameters$a,
   mean_z   = true_parameters$mean_z,
@@ -202,7 +202,7 @@ recovery_results <- run_ddm_optimization_multi_start(
   lower_bounds = lower_bounds,
   upper_bounds = upper_bounds,
   objective_fn_name = "ddm_binned_likelihood_objective",
-  n_sim_per_eval = 1500,  # Trials simulated per optimization step
+  n_sim_per_eval = 1000,  # Trials simulated per optimization step
   fixed_params = fixed_params,
   optim_maxit = 150,      # Maximum optimization iterations
   rt_bins = rt_bins,

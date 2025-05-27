@@ -16,12 +16,15 @@ knitr::opts_chunk$set(
   echo = TRUE,
   message = FALSE,
   warning = FALSE,
-  fig.align = 'center'
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
 )
 # Load necessary packages
 library(ggplot2)
 library(dplyr) # For data manipulation
 library(tidyr) # For data wrangling if needed
+library(gridExtra) # For arranging plots
 
 # Source the functions from your DDM R script
 source("../R/02_ddm_simulator_basic.R")
@@ -34,87 +37,255 @@ The Diffusion Decision Model (DDM) is a prominent mathematical model used in psy
 
 The DDM is essentially a continuous-time version of the random walk model we explored in the previous vignette. Instead of discrete steps, evidence is assumed to accumulate continuously, influenced by both a systematic "drift" (reflecting the quality of stimulus information) and random "noise" (reflecting moment-to-moment variability in processing).
 
-This vignette will demonstrate how to simulate the DDM using the functions created in R/02_diffusion_simulator.R.
+### Why Use the DDM?
+
+The DDM is particularly valuable because it:
+
+1.  **Jointly explains accuracy and RT**: Unlike models that treat these separately, the DDM provides a unified account
+2.  **Captures individual differences**: Parameters can vary across participants and conditions
+3.  **Has strong theoretical foundation**: Based on optimal decision-making principles
+4.  **Provides mechanistic insights**: Links behavioral data to underlying cognitive processes
+
+### Mathematical Foundation
+
+The DDM is mathematically described by a stochastic differential equation:
+
+$$dx(t) = v \cdot dt + s \cdot dW(t)$$
+
+Where: - $x(t)$ is the evidence state at time $t$ - $v$ is the drift rate (systematic accumulation) - $s$ is the diffusion coefficient (noise) - $dW(t)$ is a Wiener process increment
+
+This vignette will demonstrate how to simulate the DDM using the functions created in `R/02_ddm_simulator_basic.R`.
 
 ## Key DDM Parameters
 
-Our DDM simulator, simulate_diffusion_trial(), uses the Feller (1968) convention, where evidence accumulates between a lower boundary at 0 and an upper boundary at a.
+Our DDM simulator, `simulate_diffusion_trial()`, uses the Feller (1968) convention, where evidence accumulates between a lower boundary at 0 and an upper boundary at $a$.
+
+```{r parameter_illustration, echo=FALSE, fig.height=4, fig.width=6}
+# Create a simple illustration of DDM parameters
+set.seed(123)
+example_params <- list(v = 0.2, a = 1.0, z = 0.4, s = 0.3, dt = 0.01)
+
+# Simulate a single path for illustration
+illustration_trial <- simulate_diffusion_trial_with_path(
+  v = example_params$v,
+  a = example_params$a, 
+  z = example_params$z,
+  s = example_params$s,
+  dt = example_params$dt
+)
+
+# Create illustration plot
+ggplot(illustration_trial$path_data, aes(x = time_s, y = evidence)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "red", linewidth = 1) +
+  geom_hline(yintercept = example_params$a, linetype = "solid", color = "red", linewidth = 1) +
+  geom_hline(yintercept = example_params$z, linetype = "dashed", color = "green", linewidth = 1) +
+  geom_segment(aes(x = 0, y = example_params$z, 
+                   xend = max(time_s), yend = example_params$z + example_params$v * max(time_s)),
+               color = "orange", linewidth = 1, linetype = "dotted") +
+  annotate("text", x = max(illustration_trial$path_data$time_s) * 0.9, 
+           y = example_params$a + 0.05, label = "Upper boundary (a)", color = "red") +
+  annotate("text", x = max(illustration_trial$path_data$time_s) * 0.9, 
+           y = -0.05, label = "Lower boundary (0)", color = "red") +
+  annotate("text", x = max(illustration_trial$path_data$time_s) * 0.1, 
+           y = example_params$z + 0.05, label = "Starting point (z)", color = "green") +
+  annotate("text", x = max(illustration_trial$path_data$time_s) * 0.5, 
+           y = example_params$z + example_params$v * max(illustration_trial$path_data$time_s) * 0.5 + 0.1, 
+           label = "Drift rate (v)", color = "orange") +
+  labs(title = "DDM Parameters Illustrated",
+       x = "Time (s)", y = "Evidence") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Parameter Descriptions
 
 -   **v (Drift Rate):**
-
-    -   The average rate of evidence accumulation.
-
-    -   A positive v indicates drift towards the upper boundary a (often representing the "correct" response for a given stimulus).
-
-    -   A negative v indicates drift towards the lower boundary 0.
-
-    -   The magnitude of v reflects the quality or strength of the stimulus information (e.g., higher discriminability leads to a larger \|v\|).
-
+    -   The average rate of evidence accumulation per unit time
+    -   Positive $v$ indicates drift towards the upper boundary $a$
+    -   Negative $v$ indicates drift towards the lower boundary 0
+    -   Magnitude reflects stimulus discriminability: $|v| \propto$ signal strength
+    -   **Typical range**: -2 to +2 (in standardized units)
 -   **a (Threshold Separation):**
-
-    -   The distance between the lower boundary (0) and the upper boundary (a).
-
-    -   Represents the amount of evidence required to make a decision.
-
-    -   Higher values of a generally lead to slower but more accurate responses (speed-accuracy tradeoff).
-
+    -   Distance between decision boundaries (0 and $a$)
+    -   Controls the speed-accuracy tradeoff
+    -   Higher $a$ → slower, more accurate responses
+    -   Lower $a$ → faster, less accurate responses
+    -   **Typical range**: 0.5 to 2.5
 -   **z (Starting Point):**
-
-    -   The initial state of the evidence accumulator, where 0 \< z \< a.
-
-    -   Represents an initial bias towards one of the responses.
-
-    -   z = a/2 indicates an unbiased starting point.
-
-    -   z \> a/2 indicates a bias towards the upper boundary a.
-
-    -   z \< a/2 indicates a bias towards the lower boundary 0.
-
--   **s (Noise / Infinitesimal Standard Deviation):**
-
-    -   The standard deviation of the normally distributed increments in the evidence accumulation process (scaled by sqrt(dt)).
-
-    -   Represents moment-to-moment variability or noise.
-
-    -   In many DDM applications, s is fixed (often to 0.1) to allow other parameters to be estimated on a common scale.
-
--   **ter (or t0, Non-Decision Time):**
-
-    -   The time taken for processes outside of the decision-making stage, such as stimulus encoding and response execution.
-
-    -   It is added to the simulated decision time to yield the total predicted RT.
-
+    -   Initial evidence state: $0 < z < a$
+    -   $z = a/2$: unbiased starting point
+    -   $z > a/2$: bias toward upper boundary
+    -   $z < a/2$: bias toward lower boundary
+    -   **Typical range**: $z/a$ from 0.3 to 0.7
+-   **s (Noise/Diffusion Coefficient):**
+    -   Standard deviation of moment-to-moment variability
+    -   Often fixed to 0.1 for parameter scaling
+    -   Higher $s$ increases RT variability
+    -   **Typical value**: 0.1 (fixed)
+-   **ter (Non-Decision Time):**
+    -   Time for encoding and motor processes
+    -   Added to decision time for total RT
+    -   **Typical range**: 0.1 to 0.5 seconds
 -   **dt (Time Step):**
-
-    -   A small time interval used in the simulation to approximate the continuous diffusion process (Euler-Maruyama method). Smaller dt leads to higher accuracy but longer computation time.
+    -   Simulation granularity for Euler-Maruyama approximation
+    -   Smaller $dt$ → higher accuracy, longer computation
+    -   **Recommended**: 0.001 to 0.01 seconds
 
 ## Simulating a Single DDM Trial
 
-The simulate_diffusion_trial() function simulates one instance of the evidence accumulation process.
+The `simulate_diffusion_trial()` function simulates one instance of the evidence accumulation process.
 
 ```{r single_ddm_trial_example}
 set.seed(102) # For reproducibility
 
-# Example: Positive drift, unbiased start
+# Example 1: Positive drift, unbiased start
 trial_A <- simulate_diffusion_trial(v = 0.2, a = 1.0, z = 0.5, s = 0.1, ter = 0.15)
-print(paste("Trial A: Choice =", trial_A$choice, "(1=Upper, 0=Lower), RT =", round(trial_A$rt, 3), "s"))
+cat("Trial A: Choice =", trial_A$choice, "(1=Upper, 0=Lower), RT =", round(trial_A$rt, 3), "s\n")
 
-# Example: Negative drift, biased towards upper
+# Example 2: Negative drift, biased towards upper
 trial_B <- simulate_diffusion_trial(v = -0.2, a = 1.0, z = 0.7, s = 0.1, ter = 0.15)
-print(paste("Trial B: Choice =", trial_B$choice, ", RT =", round(trial_B$rt, 3), "s"))
+cat("Trial B: Choice =", trial_B$choice, ", RT =", round(trial_B$rt, 3), "s\n")
 
-# Example: No drift, unbiased start
+# Example 3: No drift, unbiased start
 trial_C <- simulate_diffusion_trial(v = 0.0, a = 1.0, z = 0.5, s = 0.1, ter = 0.15)
-print(paste("Trial C: Choice =", trial_C$choice, ", RT =", round(trial_C$rt, 3), "s"))
+cat("Trial C: Choice =", trial_C$choice, ", RT =", round(trial_C$rt, 3), "s\n")
+
+# Example 4: High threshold (conservative)
+trial_D <- simulate_diffusion_trial(v = 0.2, a = 1.8, z = 0.9, s = 0.1, ter = 0.15)
+cat("Trial D: Choice =", trial_D$choice, ", RT =", round(trial_D$rt, 3), "s\n")
 ```
 
-The choice is 1 if the upper boundary a is reached, and 0 if the lower boundary 0 is reached.
+**Interpretation**: - Trial A: Positive drift should favor upper boundary (choice = 1) - Trial B: Despite negative drift, high starting point might still reach upper boundary - Trial C: With no systematic drift, choice depends purely on noise - Trial D: High threshold leads to longer, more accurate decisions
+
+## Understanding Parameter Effects Through Simulation
+
+Let's systematically explore how each parameter affects DDM behavior:
+
+### Effect of Drift Rate (v)
+
+```{r drift_rate_effects, fig.height=8}
+set.seed(1001)
+drift_rates <- c(-0.3, -0.1, 0, 0.1, 0.3)
+n_trials_per_condition <- 500
+
+# Simulate data for different drift rates
+drift_results <- data.frame()
+for(v in drift_rates) {
+  sim_data <- simulate_diffusion_experiment(
+    n_trials = n_trials_per_condition,
+    v = v, a = 1.0, z = 0.5, s = 0.1, ter = 0.2
+  )
+  sim_data$drift_rate <- v
+  drift_results <- rbind(drift_results, sim_data)
+}
+
+# Remove any NA trials
+drift_results <- drift_results %>% filter(!is.na(choice))
+
+# Plot 1: Choice proportions by drift rate
+p1 <- drift_results %>%
+  group_by(drift_rate) %>%
+  summarise(prop_upper = mean(choice == 1), .groups = 'drop') %>%
+  ggplot(aes(x = drift_rate, y = prop_upper)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_line(linewidth = 1, color = "steelblue") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  labs(title = "Choice Probability vs. Drift Rate",
+       x = "Drift Rate (v)", y = "P(Upper Boundary)") +
+  theme_minimal()
+
+# Plot 2: Mean RT by drift rate and choice
+p2 <- drift_results %>%
+  group_by(drift_rate, choice) %>%
+  summarise(mean_rt = mean(rt), .groups = 'drop') %>%
+  ggplot(aes(x = drift_rate, y = mean_rt, color = factor(choice))) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("0" = "salmon", "1" = "steelblue"),
+                     labels = c("Lower", "Upper"),
+                     name = "Boundary") +
+  labs(title = "Mean RT vs. Drift Rate",
+       x = "Drift Rate (v)", y = "Mean RT (s)") +
+  theme_minimal()
+
+# Combine plots
+grid.arrange(p1, p2, ncol = 1)
+```
+
+**Key Observations**: - Higher drift rates increase accuracy (choice probability) - RTs are typically faster for choices in the direction of drift - The relationship between drift rate and choice follows a sigmoid (psychometric) function
+
+### Effect of Threshold (a)
+
+```{r threshold_effects}
+set.seed(1002)
+thresholds <- c(0.8, 1.0, 1.2, 1.4, 1.6)
+
+threshold_results <- data.frame()
+for(a in thresholds) {
+  sim_data <- simulate_diffusion_experiment(
+    n_trials = n_trials_per_condition,
+    v = 0.15, a = a, z = a/2, s = 0.1, ter = 0.2  # Keep z proportional to a
+  )
+  sim_data$threshold <- a
+  threshold_results <- rbind(threshold_results, sim_data)
+}
+
+threshold_results <- threshold_results %>% filter(!is.na(choice))
+
+# Plot accuracy and mean RT vs threshold
+p3 <- threshold_results %>%
+  group_by(threshold) %>%
+  summarise(accuracy = mean(choice == 1), .groups = 'drop') %>%  # Assuming v > 0, so upper is "correct"
+  ggplot(aes(x = threshold, y = accuracy)) +
+  geom_point(size = 3, color = "darkgreen") +
+  geom_line(linewidth = 1, color = "darkgreen") +
+  labs(title = "Accuracy vs. Threshold",
+       x = "Threshold (a)", y = "Accuracy") +
+  theme_minimal()
+
+p4 <- threshold_results %>%
+  group_by(threshold) %>%
+  summarise(mean_rt = mean(rt), .groups = 'drop') %>%
+  ggplot(aes(x = threshold, y = mean_rt)) +
+  geom_point(size = 3, color = "purple") +
+  geom_line(linewidth = 1, color = "purple") +
+  labs(title = "Mean RT vs. Threshold",
+       x = "Threshold (a)", y = "Mean RT (s)") +
+  theme_minimal()
+
+grid.arrange(p3, p4, ncol = 2)
+```
+
+**Key Observations**: - Higher thresholds lead to higher accuracy but longer RTs - This demonstrates the fundamental speed-accuracy tradeoff in decision-making
+
+### Using Utility Functions for Parameter Exploration
+
+Our enhanced DDM package includes utility functions that make parameter exploration more systematic and efficient:
+
+```{r parameter_grid_example}
+# Create a parameter grid for systematic exploration
+param_grid <- create_parameter_grid(
+  v_values = c(0.1, 0.2, 0.3),
+  a_values = c(0.8, 1.0, 1.2),
+  z_values = c(0.4, 0.5, 0.6),
+  z_as_proportion = FALSE  # Use absolute z values
+)
+
+# Display first few parameter combinations
+knitr::kable(head(param_grid), caption = "Example Parameter Grid for Systematic Exploration")
+
+# Create organized parameter objects
+easy_params <- create_ddm_params(v = 0.3, a = 1.0, z = 0.5, name = "Easy Condition")
+hard_params <- create_ddm_params(v = 0.1, a = 1.0, z = 0.5, name = "Hard Condition")
+
+print(easy_params)
+print(hard_params)
+```
 
 ## Simulating a DDM Experiment
 
-To understand the model's predictions for RT distributions and choice probabilities, we simulate many trials using simulate_diffusion_experiment().
-
-Let's simulate an experiment with parameters that should yield a mix of choices and a right-skewed RT distribution.
+To understand the model's predictions for RT distributions and choice probabilities, we simulate many trials using `simulate_diffusion_experiment()`.
 
 ```{r ddm_experiment_simulation}
 set.seed(202)
@@ -122,12 +293,12 @@ n_sim_trials <- 2000 # Use a good number of trials for smooth distributions
 
 # Define a set of parameters
 params <- list(
-  v = 0.15,      # Moderate positive drift
-  a = 1.2,       # Threshold
-  z = 0.6,       # Unbiased start (a/2)
-  s = 0.5,       # Standard noise
+  v = 0.1,      # Moderate positive drift
+  a = 0.7,       # Threshold
+  z = 0.35,       # Unbiased start (a/2)
+  s = 0.2,       # Standard noise
   ter = 0.2,     # Non-decision time
-  dt = 0.01     # Time step
+  dt = 0.01     # Time step (higher precision)
 )
 
 ddm_data <- simulate_diffusion_experiment(
@@ -141,109 +312,140 @@ ddm_data <- simulate_diffusion_experiment(
 )
 
 # Display the first few rows
-knitr::kable(head(ddm_data), caption = "First 6 trials of the simulated DDM experiment.")
+knitr::kable(head(ddm_data, 10), digits = 3, 
+             caption = "First 10 trials of the simulated DDM experiment.")
 
-# Summary of the data
-summary(ddm_data)
+# Summary of the data using our utility function
+summary_table <- create_summary_table(ddm_data, correct_response = 1)
+knitr::kable(summary_table, caption = "Comprehensive Summary of DDM Simulation Results")
 ```
 
 ### Analyzing DDM Experiment Results
 
-#### **1. Choice Proportions**
+#### **1. Choice Proportions and Accuracy**
 
-```{r, fig.alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation"}
+```{r choice_analysis, fig.height=4}
 # Filter out NA choices (if max_decision_time was hit)
 valid_ddm_choices <- na.omit(ddm_data$choice)
 
 choice_counts_ddm <- table(valid_ddm_choices)
 choice_proportions_ddm <- prop.table(choice_counts_ddm)
 
-print("DDM Choice Counts:")
+cat("Choice Counts:\n")
 print(choice_counts_ddm)
-print("DDM Choice Proportions:")
-knitr::kable(as.data.frame(choice_proportions_ddm), col.names = c("Choice", "Proportion"), caption = "DDM Choice Proportions")
+cat("\nChoice Proportions:\n")
+knitr::kable(as.data.frame(choice_proportions_ddm), 
+             col.names = c("Choice", "Proportion"), 
+             caption = "DDM Choice Proportions")
 
-barplot(choice_proportions_ddm,
-        main = "DDM Choice Proportions",
-        xlab = "Choice (1 = Upper, 0 = Lower)",
-        ylab = "Proportion",
-        names.arg = c("Lower Boundary (0)", "Upper Boundary (1)"), # More descriptive labels
-        col = c("salmon", "lightblue"))
+# Create a more informative bar plot
+choice_df <- data.frame(
+  Boundary = c("Lower (0)", "Upper (1)"),
+  Proportion = as.numeric(choice_proportions_ddm),
+  Count = as.numeric(choice_counts_ddm)
+)
+
+ggplot(choice_df, aes(x = Boundary, y = Proportion, fill = Boundary)) +
+  geom_col(alpha = 0.8, color = "black") +
+  geom_text(aes(label = paste0(round(Proportion*100, 1), "%\n(n=", Count, ")")), 
+            vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c("salmon", "steelblue")) +
+  labs(title = paste("Choice Proportions (v =", params$v, ")"),
+       x = "Decision Boundary", y = "Proportion") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylim(0, max(choice_df$Proportion) * 1.2)
 ```
 
-With a positive drift (v = 0.15), we expect more choices for the upper boundary (Choice 1).
+**Expected Result**: With positive drift (v = `r params$v`), we expect more choices for the upper boundary (Choice 1), which we observe as `r round(choice_proportions_ddm[2]*100, 1)`% of trials.
 
 #### **2. Reaction Time (RT) Distributions**
 
-The DDM is well-known for predicting positively skewed RT distributions.
+The DDM is well-known for predicting positively skewed RT distributions - a hallmark of decision-making data.
 
-```{r ddm_rt_distributions, fig.alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times"}
+```{r ddm_rt_distributions, fig.height=8}
 # Filter out NA RTs
 valid_ddm_rt_data <- ddm_data %>% filter(!is.na(rt))
 
 if(nrow(valid_ddm_rt_data) > 0) {
-
-  # Plot for decision_time only
-  p_rt_decision <- ggplot(valid_ddm_rt_data, aes(x = decision_time, fill = factor(choice))) +
-    geom_histogram(binwidth = 0.025, alpha = 0.8, position = "identity", color="black") +
+  
+  # Create comprehensive RT analysis
+  # Plot 1: Decision time distributions
+  p_decision <- ggplot(valid_ddm_rt_data, aes(x = decision_time, fill = factor(choice))) +
+    geom_histogram(binwidth = 0.02, alpha = 0.7, position = "identity", color = "black") +
     facet_wrap(~factor(choice, labels = c("Lower Boundary (0)", "Upper Boundary (1)"))) +
-    labs(
-      title = "DDM Decision Time Distributions",
-      x = "Decision Time (s)",
-      y = "Frequency",
-      fill = "Choice"
-    ) +
-    theme_minimal()
-  print(p_rt_decision)
+    scale_fill_manual(values = c("salmon", "steelblue")) +
+    labs(title = "Decision Time Distributions",
+         x = "Decision Time (s)", y = "Frequency", fill = "Choice") +
+    theme_minimal() +
+    theme(legend.position = "none")
+  
+  # Plot 2: Total RT distributions  
+  p_total <- ggplot(valid_ddm_rt_data, aes(x = rt, fill = factor(choice))) +
+    geom_histogram(binwidth = 0.02, alpha = 0.7, position = "identity", color = "black") +
+    facet_wrap(~factor(choice, labels = c("Lower Boundary (0)", "Upper Boundary (1)"))) +
+    scale_fill_manual(values = c("salmon", "steelblue")) +
+    labs(title = "Total RT Distributions (Decision Time + Non-Decision Time)",
+         x = "Total RT (s)", y = "Frequency", fill = "Choice") +
+    theme_minimal() +
+    theme(legend.position = "none")
+  
+  grid.arrange(p_decision, p_total, ncol = 1)
 
   # Summary statistics for RTs
   rt_summary_ddm <- valid_ddm_rt_data %>%
     group_by(choice) %>%
     summarise(
+      N = n(),
       Mean_RT = mean(rt),
       Median_RT = median(rt),
       SD_RT = sd(rt),
       Min_RT = min(rt),
       Max_RT = max(rt),
-      N = n()
-    ) %>% ungroup() # Ungroup for kable
+      Skewness = (mean(rt) - median(rt)) / sd(rt),  # Simple skewness measure
+      .groups = 'drop'
+    )
 
-  knitr::kable(rt_summary_ddm, caption = "Summary Statistics for DDM RTs by Choice")
-  # Check for skew: Mean > Median
-  print("Mean RTs:")
-  print(rt_summary_ddm$Mean_RT)
-  print("Median RTs:")
-  print(rt_summary_ddm$Median_RT)
+  knitr::kable(rt_summary_ddm, digits = 3, 
+               caption = "Summary Statistics for DDM RTs by Choice")
+  
+  # Highlight the skewness
+  cat("\n=== Skewness Analysis ===\n")
+  cat("Positive skew (Mean > Median) indicates right-skewed distributions\n")
+  for(i in 1:nrow(rt_summary_ddm)) {
+    choice_val <- rt_summary_ddm$choice[i]
+    skew_val <- rt_summary_ddm$Skewness[i]
+    cat("Choice", choice_val, ": Skewness =", round(skew_val, 3), 
+        ifelse(skew_val > 0, "(right-skewed)", "(left-skewed)"), "\n")
+  }
 
 } else {
-  print("No valid trials with RTs to plot (all may have hit max_decision_time).")
+  cat("No valid trials with RTs to plot (all may have hit max_decision_time).\n")
 }
 ```
 
-We should observe the characteristic right-skew (positive skew) in these distributions, where the mean RT is typically greater than the median RT. The decision time plot helps isolate the skew predicted by the accumulation process itself, separate from the non-decision time.
+**Key Observations**: - Both distributions show positive skew (right tail), characteristic of DDM predictions - "Correct" responses (upper boundary, given positive drift) tend to be faster on average - The addition of non-decision time shifts the entire distribution rightward
 
-## Visualizing Evidence Accumulation Paths (Optional Advanced)
+## Visualizing Evidence Accumulation Paths
 
-To gain a more intuitive understanding of the DDM, it's helpful to visualize the actual paths of evidence accumulation on a few example trials. This is similar to Figure 1 in "An Introduction to the Diffusion Model of Decision-Making" by Smith and Ratcliff.
+To gain intuitive understanding of the DDM, let's visualize actual evidence accumulation paths.
 
-We've created a modified function, \`simulate_diffusion_trial_with_path()\`, which, in addition to the choice and RT, also returns the history of evidence levels over time for a single trial.
+### Individual Trial Paths
 
-Let's simulate a few trials and plot their paths. We'll aim for a scenario that can produce varied outcomes.
-
-```{r ddm_path_simulation_setup}
+```{r ddm_path_simulation_setup, fig.height=6}
 path_params <- list(
-  v = 0.1,    # A moderate drift, so paths aren't too quick
+  v = 0.1,    # Moderate drift for interesting paths
   a = 1.0,    # Threshold
   z = 0.5,    # Unbiased start
-  s = 0.5,   # A bit more noise to make paths interesting
+  s = 0.3,    # Moderate noise for variability
   dt = 0.01,
-  ter = 0.1   # ter is not directly used in path plotting but good for context
+  ter = 0.1   
 )
 
-n_paths_to_plot <- 5 # Number of example paths
-all_paths_data <- vector("list", n_paths_to_plot) # To store data for each path
+n_paths_to_plot <- 8 # More paths for better illustration
+all_paths_data <- vector("list", n_paths_to_plot)
 
-set.seed(343) # For reproducibility of these specific paths
+set.seed(343) # For reproducibility
 for (i in 1:n_paths_to_plot) {
   trial_with_path <- simulate_diffusion_trial_with_path(
     v = path_params$v,
@@ -253,97 +455,350 @@ for (i in 1:n_paths_to_plot) {
     dt = path_params$dt,
     ter = path_params$ter
   )
-  # Add a trial identifier to the path data
   trial_with_path$path_data$trial_id <- paste("Trial", i)
-  trial_with_path$path_data$final_choice <- trial_with_path$choice # Store choice for coloring
+  trial_with_path$path_data$final_choice <- trial_with_path$choice
+  trial_with_path$path_data$final_rt <- trial_with_path$rt
   all_paths_data[[i]] <- trial_with_path$path_data
 }
 
-# Combine all path data into a single data frame for ggplot
 plot_df_paths <- bind_rows(all_paths_data)
-
-# Get the threshold 'a' (assuming it's the same for all these trials)
 threshold_a <- path_params$a
-```
 
-Now we can plot these paths using ggplot2.
-
-```{r ddm_path_plotting, fig.width=8, fig.height=6, fig.alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries"}
 if(nrow(plot_df_paths) > 0) {
-  ggplot(plot_df_paths, aes(x = time_s, y = evidence, group = trial_id, color = factor(final_choice))) +
-    geom_line(alpha = 0.8, linewidth = 0.7) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
-    geom_hline(yintercept = threshold_a, linetype = "dashed", color = "black") +
-    annotate("text", x = max(plot_df_paths$time_s, na.rm = TRUE) * 0.9, y = threshold_a + 0.05, label = paste("Boundary a =", threshold_a), hjust = 1, size=3) +
-    annotate("text", x = max(plot_df_paths$time_s, na.rm = TRUE) * 0.9, y = -0.05, label = "Boundary 0", hjust = 1, size=3) +
+  ggplot(plot_df_paths, aes(x = time_s, y = evidence, group = trial_id, 
+                           color = factor(final_choice))) +
+    geom_line(alpha = 0.8, linewidth = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +
+    geom_hline(yintercept = threshold_a, linetype = "dashed", color = "black", linewidth = 1) +
+    geom_hline(yintercept = path_params$z, linetype = "dotted", color = "grey40", linewidth = 0.8) +
+    # Add drift line
+    geom_segment(aes(x = 0, y = path_params$z, 
+                     xend = max(time_s, na.rm = TRUE), 
+                     yend = path_params$z + path_params$v * max(time_s, na.rm = TRUE)),
+                 color = "orange", linewidth = 1.5, linetype = "longdash",
+                 inherit.aes = FALSE) +
+    annotate("text", x = max(plot_df_paths$time_s, na.rm = TRUE) * 0.95, 
+             y = threshold_a + 0.05, label = paste("Upper boundary (a =", threshold_a, ")"), 
+             hjust = 1, size = 3.5, fontface = "bold") +
+    annotate("text", x = max(plot_df_paths$time_s, na.rm = TRUE) * 0.95, 
+             y = -0.05, label = "Lower boundary (0)", 
+             hjust = 1, size = 3.5, fontface = "bold") +
+    annotate("text", x = 0.1, y = path_params$z + 0.08, 
+             label = paste("Starting point (z =", path_params$z, ")"), 
+             hjust = 0, size = 3.5, color = "grey40") +
+    annotate("text", x = max(plot_df_paths$time_s, na.rm = TRUE) * 0.6, 
+             y = path_params$z + path_params$v * max(plot_df_paths$time_s, na.rm = TRUE) * 0.6 + 0.1, 
+             label = paste("Average drift (v =", path_params$v, ")"), 
+             hjust = 0.5, size = 3.5, color = "orange", fontface = "bold") +
     scale_color_manual(values = c("0" = "salmon", "1" = "steelblue", "NA" = "grey"),
                        labels = c("0" = "Lower Boundary", "1" = "Upper Boundary", "NA"= "Timeout"),
-                       name = "Outcome") +
-    labs(
-      title = "Example DDM Evidence Accumulation Paths",
-      x = "Decision Time (s)",
-      y = "Accumulated Evidence"
-    ) +
+                       name = "Trial Outcome") +
+    labs(title = "DDM Evidence Accumulation Paths",
+         subtitle = paste("Parameters: v =", path_params$v, ", a =", path_params$a, 
+                         ", z =", path_params$z, ", s =", path_params$s),
+         x = "Decision Time (s)", y = "Accumulated Evidence") +
     theme_minimal() +
-    theme(legend.position = "top")
+    theme(legend.position = "top",
+          plot.title = element_text(size = 14, face = "bold"),
+          plot.subtitle = element_text(size = 12))
 } else {
-  print("No path data to plot.")
+  cat("No path data to plot.\n")
 }
 ```
 
-### Visualizing Evidence Accumulation Paths with Helper Function
+### Comprehensive Path and RT Visualization
 
-To better visualize the DDM process, we'll use our custom helper function \`plot_ddm_paths_with_histograms()\`. This function will display several trial paths, decision boundaries, the starting point, and the average drift line. It will also generate separate plots for the RT distributions at each boundary.
+Our custom visualization function provides an integrated view of the decision process:
 
-```{r, fig.height=6, fig.width=5, fig.alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times"}
-# Parameters for path visualization
-path_plot_params_int <- list(
-  v = 0.05,    # Moderate positive drift
-  a = 1,
-  z = 0.5,    # Unbiased
-  s = 0.4,   # More noise
-  ter = 0.0,  # For ridges, we're plotting decision_time so ter=0 in sim is cleaner
+```{r advanced_path_visualization, fig.height=8, fig.width=10}
+# Parameters for comprehensive visualization
+path_plot_params <- list(
+  v = 0.08,    # Moderate positive drift
+  a = 1.0,
+  z = 0.5,     # Unbiased
+  s = 0.35,    # Moderate noise
+  ter = 0.0,   # Use 0 for cleaner decision time plots
   dt = 0.01
 )
 
-n_example_paths_int <- 200 # Need more trials for decent ridges
+n_example_paths <- 300 # Sufficient trials for good distributions
 
 # Simulate the trials
 set.seed(505)
-example_trials_list_int <- vector("list", n_example_paths_int)
-for (i in 1:n_example_paths_int) {
-  example_trials_list_int[[i]] <- simulate_diffusion_trial_with_path(
-    v = path_plot_params_int$v,
-    a = path_plot_params_int$a,
-    z = path_plot_params_int$z,
-    s = path_plot_params_int$s,
-    dt = path_plot_params_int$dt,
-    ter = path_plot_params_int$ter # Using ter=0 from params for this plot
+example_trials_list <- vector("list", n_example_paths)
+for (i in 1:n_example_paths) {
+  example_trials_list[[i]] <- simulate_diffusion_trial_with_path(
+    v = path_plot_params$v,
+    a = path_plot_params$a,
+    z = path_plot_params$z,
+    s = path_plot_params$s,
+    dt = path_plot_params$dt,
+    ter = path_plot_params$ter
   )
 }
 
-if(length(example_trials_list_int) > 20){ # Check if enough valid trials for hists
+# Check if we have enough valid trials
+valid_trials <- sum(sapply(example_trials_list, function(x) !is.na(x$choice)))
+cat("Generated", valid_trials, "valid trials out of", n_example_paths, "\n")
+
+if(valid_trials > 50) {
   plot_ddm_paths_with_histograms(
-    trials_data_list = example_trials_list_int,
-    v_drift = path_plot_params_int$v,
-    z_start = path_plot_params_int$z,
-    a_threshold = path_plot_params_int$a,
-    hist_binwidth = 0.2, # Adjust as needed
-    max_time_to_plot = 5
+    trials_data_list = example_trials_list,
+    v_drift = path_plot_params$v,
+    z_start = path_plot_params$z,
+    a_threshold = path_plot_params$a,
+    hist_binwidth = 0.15,
+    max_time_to_plot = 6,
+    main_plot_title = paste("DDM Simulation: Paths and RT Distributions\n",
+                           "v =", path_plot_params$v, ", a =", path_plot_params$a,
+                           ", z =", path_plot_params$z, ", s =", path_plot_params$s)
   )
 } else {
-  print("Not enough valid trials with diverse outcomes to generate combined plot.")
+  cat("Not enough valid trials with diverse outcomes to generate combined plot.\n")
 }
 ```
 
+**Interpretation**: - **Central panel**: Shows evidence accumulation paths over time - **Upper panel**: Distribution of decision times for upper boundary choices - **Lower panel**: Distribution of decision times for lower boundary choices (flipped) - **Orange line**: Expected drift trajectory based on parameter $v$ - **Dashed lines**: Decision boundaries and starting point
+
+## Practical Applications and Model Fitting
+
+### Simulating Different Experimental Conditions
+
+The DDM can model various experimental manipulations:
+
+```{r experimental_conditions, fig.height=6}
+set.seed(2001)
+
+# Define different experimental conditions
+conditions <- list(
+  "Easy High Accuracy" = list(v = 0.4, a = 1.0, z = 0.5),    # High drift
+  "Hard Low Accuracy" = list(v = 0.1, a = 1.0, z = 0.5),     # Low drift  
+  "Speed Emphasis" = list(v = 0.2, a = 0.8, z = 0.4),        # Low threshold
+  "Accuracy Emphasis" = list(v = 0.2, a = 1.4, z = 0.7),     # High threshold
+  "Response Bias" = list(v = 0.2, a = 1.0, z = 0.3)          # Biased start
+)
+
+# Simulate each condition
+condition_results <- data.frame()
+condition_data_list <- list()  # For plotting comparisons
+
+for(cond_name in names(conditions)) {
+  cond_params <- conditions[[cond_name]]
+  sim_data <- simulate_diffusion_experiment(
+    n_trials = 400,
+    v = cond_params$v, 
+    a = cond_params$a, 
+    z = cond_params$z,
+    s = 0.3, ter = 0.2, dt = 0.001
+  )
+  sim_data$condition <- cond_name
+  condition_results <- rbind(condition_results, sim_data)
+  condition_data_list[[cond_name]] <- sim_data
+}
+
+# Remove NA trials and calculate summaries
+condition_summary <- condition_results %>%
+  filter(!is.na(choice)) %>%
+  group_by(condition) %>%
+  summarise(
+    n_trials = n(),
+    accuracy = mean(choice == 1),  # Assuming upper boundary is "correct"
+    mean_rt = mean(rt),
+    median_rt = median(rt),
+    rt_cv = sd(rt) / mean(rt),  # Coefficient of variation
+    .groups = 'drop'
+  )
+
+knitr::kable(condition_summary, digits = 3, 
+             caption = "Simulated Experimental Conditions")
+
+# Visualize the speed-accuracy tradeoff
+ggplot(condition_summary, aes(x = mean_rt, y = accuracy, label = condition)) +
+  geom_point(size = 4, color = "steelblue") +
+  geom_text(vjust = -0.8, hjust = 0.5, size = 3) +
+  labs(title = "Speed-Accuracy Tradeoff Across Conditions",
+       x = "Mean RT (s)", y = "Accuracy",
+       subtitle = "Each point represents a different experimental condition") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"))
+```
+
+### Comparing RT Distributions Across Conditions
+
+Using our utility function for comparing distributions:
+
+```{r rt_comparison_plot, fig.height=6}
+# Use the plotting utility to compare RT distributions
+rt_comparison_plot <- plot_rt_comparison(
+  condition_data_list[1:3],  # Compare first 3 conditions
+  plot_type = "density",
+  facet_by = "condition"
+)
+
+print(rt_comparison_plot)
+```
+
+### Model Validation: Predicted vs. Observed Patterns
+
+```{r model_validation, fig.height=4}
+# Focus on one condition for detailed analysis
+focus_condition <- condition_results %>% 
+  filter(condition == "Easy High Accuracy", !is.na(choice))
+
+# Create RT quantile plots (a common DDM validation approach)
+rt_quantiles <- focus_condition %>%
+  group_by(choice) %>%
+  summarise(
+    q10 = quantile(rt, 0.1),
+    q30 = quantile(rt, 0.3), 
+    q50 = quantile(rt, 0.5),
+    q70 = quantile(rt, 0.7),
+    q90 = quantile(rt, 0.9),
+    .groups = 'drop'
+  ) %>%
+  pivot_longer(cols = q10:q90, names_to = "quantile", values_to = "rt") %>%
+  mutate(quantile_num = as.numeric(substr(quantile, 2, 3)) / 100)
+
+ggplot(rt_quantiles, aes(x = quantile_num, y = rt, color = factor(choice))) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("salmon", "steelblue"),
+                     labels = c("Lower", "Upper"), name = "Boundary") +
+  labs(title = "RT Quantiles by Choice (Model Validation)",
+       x = "Quantile", y = "RT (s)",
+       subtitle = "Shows the characteristic DDM pattern: faster responses for correct choices") +
+  theme_minimal()
+```
+
+### Advanced Analysis: QQ Plots for Distribution Assessment
+
+```{r qq_plots, fig.height=5}
+# Create QQ plots to assess RT distribution characteristics
+qq_plot <- plot_rt_qq(focus_condition, reference_dist = "lognormal", split_by_choice = TRUE)
+print(qq_plot)
+```
+
+**Interpretation**: The QQ plots help assess whether our simulated RT distributions follow expected patterns. Deviations from the reference line indicate departures from the theoretical distribution.
+
+## Using Enhanced Utility Functions
+
+### Comprehensive Parameter Analysis
+
+Our package now includes functions for systematic parameter exploration:
+
+```{r systematic_parameter_analysis, eval=FALSE}
+# Create a smaller parameter grid for demonstration
+demo_grid <- create_parameter_grid(
+  v_values = c(0.1, 0.2, 0.3),
+  a_values = c(0.8, 1.2),
+  z_values = 0.5  # Keep starting point constant
+)
+
+# Analyze parameter effects (not run due to computation time in vignette)
+param_effects <- plot_parameter_effects(
+   demo_grid, 
+   n_trials_per_condition = 200,
+   plot_type = "separate"
+ )
+ 
+# Display the plots
+ print(param_effects$accuracy)
+ print(param_effects$rt)
+```
+
+### Summary Statistics Made Easy
+
+The `summarize_ddm_data()` function provides comprehensive statistics:
+
+```{r comprehensive_summary}
+# Get detailed summary statistics
+detailed_summary <- summarize_ddm_data(ddm_data, correct_response = 1)
+
+cat("=== DDM Simulation Summary ===\n")
+cat("Total trials:", detailed_summary$n_trials, "\n")
+cat("Valid trials:", detailed_summary$n_valid, "\n")
+cat("Timeout rate:", round(detailed_summary$timeout_rate * 100, 2), "%\n")
+cat("Overall accuracy:", round(detailed_summary$accuracy, 3), "\n")
+
+cat("\n=== RT Statistics (All Valid Trials) ===\n")
+rt_stats <- detailed_summary$rt_overall
+cat("Mean RT:", round(rt_stats$mean, 3), "s\n")
+cat("Median RT:", round(rt_stats$median, 3), "s\n")
+cat("RT SD:", round(rt_stats$sd, 3), "s\n")
+cat("RT Skewness:", round(rt_stats$skewness, 3), "\n")
+
+cat("\n=== Choice Proportions ===\n")
+print(detailed_summary$choice_proportions)
+```
+
+## Extensions and Advanced Topics
+
+The basic DDM can be extended in several ways:
+
+### 1. **Across-Trial Parameter Variability**
+
+-   $sv$: Trial-to-trial drift rate variability
+-   $sz$: Starting point variability\
+-   $st$: Non-decision time variability
+
+### 2. **Time-Varying Parameters**
+
+-   Collapsing boundaries: $a(t) = a_0 \cdot e^{-\lambda t}$
+-   Time-dependent drift: $v(t) = v_0 + v_1 \cdot t$
+
+### 3. **Multiple Choice Extensions**
+
+-   Racing diffusion models
+-   Multi-alternative DDMs
+-   Circular diffusion models
+
+### 4. **Neural Implementations**
+
+-   Linking DDM parameters to neural activity
+-   Hierarchical drift-diffusion models
+-   Neural DDMs with biophysical constraints
+
+### 5. **Available Utility Functions**
+
+Our enhanced DDM package now provides several utility functions for professional analysis:
+
+**Parameter Management:** - `create_ddm_params()`: Create validated parameter sets - `create_parameter_grid()`: Generate systematic parameter combinations - `validate_ddm_parameters()`: Comprehensive parameter validation
+
+**Data Analysis:** - `summarize_ddm_data()`: Comprehensive summary statistics - `create_summary_table()`: Formatted tables for reports
+
+**Visualization:** - `plot_ddm_paths_with_histograms()`: Integrated path and RT visualization - `plot_rt_comparison()`: Compare RT distributions across conditions - `plot_rt_qq()`: QQ plots for distribution assessment
+
+These functions make the DDM more accessible for research applications and provide professional-quality outputs for publications and presentations.
+
 ## Conclusion
 
-This vignette demonstrated the simulation of the Diffusion Decision Model using our R functions. We explored the key parameters and observed how they influence choice probabilities and the shape of RT distributions. The DDM provides a powerful framework for understanding the time course of simple decisions.
+This vignette demonstrated comprehensive simulation and analysis of the Diffusion Decision Model. Key takeaways:
 
-Further explorations could involve:
+1.  **Parameter Effects**: Each DDM parameter has distinct, interpretable effects on behavior
+2.  **Speed-Accuracy Tradeoff**: The model naturally captures this fundamental decision-making phenomenon\
+3.  **RT Distributions**: The DDM predicts characteristic right-skewed RT distributions
+4.  **Flexibility**: The model can account for various experimental manipulations and individual differences
+5.  **Professional Tools**: Enhanced utility functions provide systematic analysis capabilities
 
--   Systematically varying each DDM parameter to observe its impact (next vignette).
+### What We've Covered
 
--   Implementing across-trial variability in parameters (e.g., sv, sz, st0).
+-   **Mathematical foundation**: Stochastic differential equation underlying the DDM
+-   **Parameter exploration**: Systematic understanding of how each parameter affects behavior
+-   **Simulation techniques**: From single trials to full experiments with path tracking
+-   **Data analysis**: Comprehensive statistical summaries and visualization approaches
+-   **Model validation**: QQ plots, quantile analysis, and distribution assessment
+-   **Utility functions**: Professional tools for efficient DDM research
 
--   Comparing simulated data to empirical data.
+### Next Steps
+
+In subsequent vignettes, we will explore: - **Parameter estimation**: Fitting DDM to empirical data - **Model comparison**: DDM vs. alternative decision models - **Advanced extensions**: Hierarchical and neural DDMs - **Real-world applications**: Clinical and cognitive assessment
+
+### Recommended Readings
+
+-   Ratcliff, R., & McKoon, G. (2008). The diffusion decision model: Theory and data. *Neural Computation*, 20(4), 873-922.
+-   Wiecki, T. V., Sofer, I., & Frank, M. J. (2013). HDDM: Hierarchical Bayesian estimation of the drift-diffusion model in Python. *Frontiers in Neuroinformatics*, 7, 14.
+-   Smith, P. L., & Ratcliff, R. (2004). Psychology and neurobiology of simple decisions. *Trends in Neurosciences*, 27(3), 161-168.
+
+------------------------------------------------------------------------
+
+*This tutorial provides a foundation for understanding and applying the DDM in cognitive research. The simulation approach allows researchers to build intuition about the model before applying it to empirical data. The enhanced utility functions ensure that your DDM analyses are both rigorous and professional.*

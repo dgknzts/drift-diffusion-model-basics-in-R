@@ -224,3 +224,222 @@ plot_ddm_paths_with_histograms <- function(trials_data_list,
   
   return(combined_final_plot)
 }
+
+#' Plot RT distributions comparing different conditions
+#'
+#' Creates side-by-side histograms or density plots comparing RT distributions
+#' across different experimental conditions or parameter sets.
+#'
+#' @param ddm_data_list List of data frames. Each should be output from 
+#'   `simulate_diffusion_experiment()`. Names of list elements will be used
+#'   as condition labels.
+#' @param plot_type Character. Either "histogram" or "density". Default is "histogram".
+#' @param binwidth Numeric. For histograms, the bin width. Default is 0.05.
+#' @param facet_by Character. Either "condition" or "choice". Default is "condition".
+#' @param alpha Numeric. Transparency level (0-1). Default is 0.7.
+#'
+#' @return A ggplot object.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Simulate different conditions
+#' easy_data <- simulate_diffusion_experiment(1000, v = 0.3, a = 1.0, z = 0.5)
+#' hard_data <- simulate_diffusion_experiment(1000, v = 0.1, a = 1.0, z = 0.5)
+#' data_list <- list("Easy" = easy_data, "Hard" = hard_data)
+#' 
+#' plot_rt_comparison(data_list)
+#' }
+plot_rt_comparison <- function(ddm_data_list, plot_type = "histogram", 
+                               binwidth = 0.05, facet_by = "condition", 
+                               alpha = 0.7) {
+  
+  if (!requireNamespace("ggplot2", quietly = TRUE) || !requireNamespace("dplyr", quietly = TRUE)) {
+    stop("Packages 'ggplot2' and 'dplyr' are required for this function.")
+  }
+  
+  library(ggplot2)
+  library(dplyr)
+  
+  # Combine data from all conditions
+  combined_data <- data.frame()
+  condition_names <- names(ddm_data_list)
+  if (is.null(condition_names)) {
+    condition_names <- paste0("Condition_", seq_along(ddm_data_list))
+  }
+  
+  for (i in seq_along(ddm_data_list)) {
+    condition_data <- ddm_data_list[[i]]
+    condition_data$condition <- condition_names[i]
+    combined_data <- rbind(combined_data, condition_data)
+  }
+  
+  # Filter valid data
+  plot_data <- combined_data %>%
+    filter(!is.na(rt), !is.na(choice)) %>%
+    mutate(choice_label = factor(choice, labels = c("Lower Boundary", "Upper Boundary")))
+  
+  if (nrow(plot_data) == 0) {
+    stop("No valid RT data found across conditions.")
+  }
+  
+  # Create base plot
+  if (plot_type == "histogram") {
+    p <- ggplot(plot_data, aes(x = rt, fill = condition)) +
+      geom_histogram(binwidth = binwidth, alpha = alpha, position = "identity", 
+                     color = "black", linewidth = 0.3)
+  } else if (plot_type == "density") {
+    p <- ggplot(plot_data, aes(x = rt, fill = condition)) +
+      geom_density(alpha = alpha, color = "black", linewidth = 0.5)
+  } else {
+    stop("plot_type must be either 'histogram' or 'density'")
+  }
+  
+  # Add faceting
+  if (facet_by == "condition") {
+    p <- p + facet_wrap(~ condition, scales = "free_y")
+  } else if (facet_by == "choice") {
+    p <- p + facet_wrap(~ choice_label, scales = "free_y")
+  } else {
+    stop("facet_by must be either 'condition' or 'choice'")
+  }
+  
+  # Styling
+  p <- p +
+    labs(title = "RT Distribution Comparison",
+         x = "Reaction Time (s)", y = "Frequency/Density",
+         fill = "Condition") +
+    theme_minimal() +
+    theme(strip.text = element_text(size = 12, face = "bold"),
+          plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+  
+  return(p)
+}
+
+#' Create a summary table for DDM simulation results
+#'
+#' Generates a formatted table summarizing key statistics from DDM simulations,
+#' useful for inclusion in vignettes and reports.
+#'
+#' @param ddm_data Data frame. Output from `simulate_diffusion_experiment()`.
+#' @param correct_response Integer. Which choice is considered correct. Default is 1.
+#' @param round_digits Integer. Number of decimal places for rounding. Default is 3.
+#'
+#' @return A data frame formatted for display.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' data <- simulate_diffusion_experiment(1000, v = 0.2, a = 1.0, z = 0.5)
+#' summary_table <- create_summary_table(data)
+#' print(summary_table)
+#' }
+create_summary_table <- function(ddm_data, correct_response = 1, round_digits = 3) {
+  
+  summary_stats <- summarize_ddm_data(ddm_data, correct_response = correct_response)
+  
+  # Create formatted table
+  table_data <- data.frame(
+    Statistic = c(
+      "Total Trials",
+      "Valid Trials", 
+      "Timeout Rate (%)",
+      "Overall Accuracy",
+      "Mean RT (s)",
+      "Median RT (s)",
+      "RT SD (s)",
+      "RT Skewness",
+      "Choice 0 Proportion",
+      "Choice 1 Proportion"
+    ),
+    Value = c(
+      summary_stats$n_trials,
+      summary_stats$n_valid,
+      round(summary_stats$timeout_rate * 100, round_digits),
+      round(summary_stats$accuracy, round_digits),
+      round(summary_stats$rt_overall$mean, round_digits),
+      round(summary_stats$rt_overall$median, round_digits),
+      round(summary_stats$rt_overall$sd, round_digits),
+      round(summary_stats$rt_overall$skewness, round_digits),
+      if(length(summary_stats$choice_proportions) >= 1) round(summary_stats$choice_proportions[1], round_digits) else 0,
+      if(length(summary_stats$choice_proportions) >= 2) round(summary_stats$choice_proportions[2], round_digits) else 0
+    )
+  )
+  
+  return(table_data)
+}
+
+#' Plot quantile-quantile (QQ) plots for DDM RT distributions
+#'
+#' Creates QQ plots comparing simulated RT distributions to theoretical
+#' distributions, useful for model validation and understanding RT distribution
+#' characteristics.
+#'
+#' @param ddm_data Data frame. Output from `simulate_diffusion_experiment()`.
+#' @param reference_dist Character. Reference distribution for comparison.
+#'   Options: "normal", "lognormal", "gamma", "exponential". Default is "normal".
+#' @param split_by_choice Logical. Whether to create separate plots for each choice.
+#'   Default is TRUE.
+#'
+#' @return A ggplot object.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' data <- simulate_diffusion_experiment(1000, v = 0.2, a = 1.0, z = 0.5)
+#' plot_rt_qq(data, reference_dist = "lognormal")
+#' }
+plot_rt_qq <- function(ddm_data, reference_dist = "normal", split_by_choice = TRUE) {
+  
+  if (!requireNamespace("ggplot2", quietly = TRUE) || !requireNamespace("dplyr", quietly = TRUE)) {
+    stop("Packages 'ggplot2' and 'dplyr' are required for this function.")
+  }
+  
+  library(ggplot2)
+  library(dplyr)
+  
+  # Filter valid data
+  plot_data <- ddm_data %>%
+    filter(!is.na(rt), !is.na(choice)) %>%
+    mutate(choice_label = factor(choice, labels = c("Lower Boundary", "Upper Boundary")))
+  
+  if (nrow(plot_data) == 0) {
+    stop("No valid RT data found.")
+  }
+  
+  if (split_by_choice) {
+    p <- ggplot(plot_data, aes(sample = rt)) +
+      facet_wrap(~ choice_label, scales = "free")
+  } else {
+    p <- ggplot(plot_data, aes(sample = rt))
+  }
+  
+  # Add appropriate QQ plot
+  if (reference_dist == "normal") {
+    p <- p + stat_qq() + stat_qq_line()
+  } else if (reference_dist == "lognormal") {
+    p <- p + stat_qq(distribution = qlnorm) + 
+         stat_qq_line(distribution = qlnorm)
+  } else if (reference_dist == "gamma") {
+    # Estimate gamma parameters
+    shape_est <- mean(plot_data$rt)^2 / var(plot_data$rt)
+    rate_est <- mean(plot_data$rt) / var(plot_data$rt)
+    p <- p + stat_qq(distribution = qgamma, dparams = list(shape = shape_est, rate = rate_est)) +
+         stat_qq_line(distribution = qgamma, dparams = list(shape = shape_est, rate = rate_est))
+  } else if (reference_dist == "exponential") {
+    rate_est <- 1 / mean(plot_data$rt)
+    p <- p + stat_qq(distribution = qexp, dparams = list(rate = rate_est)) +
+         stat_qq_line(distribution = qexp, dparams = list(rate = rate_est))
+  } else {
+    stop("reference_dist must be one of: 'normal', 'lognormal', 'gamma', 'exponential'")
+  }
+  
+  p <- p +
+    labs(title = paste("QQ Plot vs.", stringr::str_to_title(reference_dist), "Distribution"),
+         x = "Theoretical Quantiles", y = "Sample Quantiles (RT)") +
+    theme_minimal() +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+          strip.text = element_text(size = 12, face = "bold"))
+  
+  return(p)
+}
