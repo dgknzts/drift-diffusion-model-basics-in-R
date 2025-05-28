@@ -209,37 +209,64 @@ simulate_diffusion_experiment_variable <- function(n_trials = 100,
                                                    st0 = 0,
                                                    max_decision_time = 5.0) {
   
-  # Create an empty list to store results from each trial
-  results_list <- vector("list", n_trials)
+  # Pre-allocate vectors for trial-specific parameters
+  v_trials <- rnorm(n_trials, mean = mean_v, sd = sv)
   
-  # Loop n_trials times, calling the single trial function
-  for (i in 1:n_trials) {
-    results_list[[i]] <- simulate_diffusion_trial_variable(
-      mean_v = mean_v,
-      a = a,
-      mean_z = mean_z,
-      s = s,
-      dt = dt,
-      mean_ter = mean_ter,
-      sv = sv,
-      sz = sz,
-      st0 = st0,
-      max_decision_time = max_decision_time
-    )
+  if (sz > 0) {
+    z_trials <- runif(n_trials, min = mean_z - sz/2, max = mean_z + sz/2)
+    # Clip z values to valid range
+    z_trials <- pmax(1e-6, pmin(z_trials, a - 1e-6))
+  } else {
+    z_trials <- rep(mean_z, n_trials)
   }
   
-  # Convert the list of lists into a data frame
-  df_results <- data.frame(
-    trial = 1:n_trials,
-    choice = sapply(results_list, function(x) x$choice),
-    rt = sapply(results_list, function(x) x$rt),
-    decision_time = sapply(results_list, function(x) x$decision_time),
-    v_trial = sapply(results_list, function(x) x$v_trial),
-    z_trial = sapply(results_list, function(x) x$z_trial),
-    ter_trial = sapply(results_list, function(x) x$ter_trial)
-  )
+  if (st0 > 0) {
+    ter_trials <- runif(n_trials, min = mean_ter - st0/2, max = mean_ter + st0/2)
+    ter_trials <- pmax(0, ter_trials)
+  } else {
+    ter_trials <- rep(mean_ter, n_trials)
+  }
   
-  return(df_results)
+  # Pre-allocate results vectors
+  choices <- integer(n_trials)
+  rts <- numeric(n_trials)
+  decision_times <- numeric(n_trials)
+  
+  # Vectorized simulation
+  max_steps <- max_decision_time / dt
+  for (i in 1:n_trials) {
+    evidence <- z_trials[i]
+    time_steps_taken <- 0
+    
+    while (evidence > 0 && evidence < a && time_steps_taken < max_steps) {
+      increment <- rnorm(1, mean = v_trials[i] * dt, sd = s * sqrt(dt))
+      evidence <- evidence + increment
+      time_steps_taken <- time_steps_taken + 1
+    }
+    
+    decision_time <- time_steps_taken * dt
+    
+    if (time_steps_taken >= max_steps) {
+      choices[i] <- NA
+      rts[i] <- NA
+      decision_times[i] <- NA
+    } else {
+      choices[i] <- if (evidence >= a) 1L else 0L
+      rts[i] <- decision_time + ter_trials[i]
+      decision_times[i] <- decision_time
+    }
+  }
+  
+  # Create data frame directly from vectors
+  data.frame(
+    trial = 1:n_trials,
+    choice = choices,
+    rt = rts,
+    decision_time = decision_times,
+    v_trial = v_trials,
+    z_trial = z_trials,
+    ter_trial = ter_trials
+  )
 }
 
 

@@ -126,133 +126,108 @@ calculate_binned_rt_proportions <- function(data,
 #' @return Negative log-likelihood value (to be minimized).
 #' @export
 ddm_binned_likelihood_objective <- function(params_to_test,
-                                            target_binned_props, # This now includes target Ns
+                                            target_binned_props,
                                             param_names_optim,
                                             n_sim_per_eval = 2000,
                                             fixed_params = list(s = 0.1, dt = 0.001),
                                             rt_bins,
                                             constrain_z_to_a_div_2 = FALSE,
-                                            small_constant_for_ll = 1e-6, # To avoid log(0)
+                                            small_constant_for_ll = 1e-6,
                                             verbose = FALSE,
                                             debug = FALSE) {
 
-  if(debug) cat("DEBUG: Starting objective function with params:", paste(round(params_to_test, 4), collapse=", "), "\n")
-
-  current_iter_params <- fixed_params
-  for(i in seq_along(param_names_optim)){
-    current_iter_params[[param_names_optim[i]]] <- params_to_test[i]
-  }
-  
-  if(debug) cat("DEBUG: Current params after assignment:", paste(names(current_iter_params), "=", round(unlist(current_iter_params), 4), collapse=", "), "\n")
+  # Quick parameter setup
+  current_iter_params <- c(fixed_params, setNames(as.list(params_to_test), param_names_optim))
   
   if (constrain_z_to_a_div_2) {
-    if (!"a" %in% names(current_iter_params)) {
-      if(debug) cat("DEBUG: ERROR - 'a' not found for z constraint\n")
-      stop("'a' must be defined if constraining z.")
-    }
     current_iter_params[["mean_z"]] <- current_iter_params[["a"]] / 2
-    if(debug) cat("DEBUG: Set mean_z =", current_iter_params[["mean_z"]], "\n")
   }
   
-  # Validate required parameters for simulation
+  # Validate required parameters
   required_params <- c("mean_v", "a", "mean_z", "s", "dt", "mean_ter")
-  missing_params <- required_params[!required_params %in% names(current_iter_params)]
-  if(length(missing_params) > 0) {
-    if(debug) cat("DEBUG: Missing required parameters:", paste(missing_params, collapse=", "), "\n")
+  if (!all(required_params %in% names(current_iter_params))) {
     return(1e7)
   }
   
-  # Set default values for optional variability parameters if not present
-  if(!"sv" %in% names(current_iter_params)) current_iter_params[["sv"]] <- 0
-  if(!"sz" %in% names(current_iter_params)) current_iter_params[["sz"]] <- 0
-  if(!"st0" %in% names(current_iter_params)) current_iter_params[["st0"]] <- 0
+  # Set default values for optional parameters
+  current_iter_params$sv <- current_iter_params$sv %||% 0
+  current_iter_params$sz <- current_iter_params$sz %||% 0
+  current_iter_params$st0 <- current_iter_params$st0 %||% 0
 
-  # Separate simulation parameters from binning parameters
-  sim_param_names <- c("n_trials", "mean_v", "a", "mean_z", "s", "dt", "mean_ter", "sv", "sz", "st0", "max_decision_time")
-  sim_args <- current_iter_params[names(current_iter_params) %in% sim_param_names]
-  sim_args[["n_trials"]] <- n_sim_per_eval  # Add n_trials
-  
-  if(debug) cat("DEBUG: Simulation args:", paste(names(sim_args), "=", round(unlist(sim_args), 4), collapse=", "), "\n")
-  
-  current_sim_data <- tryCatch({
-    do.call(simulate_diffusion_experiment_variable, sim_args)
-  }, error = function(e) { 
-    if(debug) cat("DEBUG: Simulation failed with error:", conditionMessage(e), "\n")
-    return(NULL) 
-  })
+  # Simulate data
+  sim_data <- tryCatch({
+    do.call(simulate_diffusion_experiment_variable, 
+            c(list(n_trials = n_sim_per_eval), 
+              current_iter_params[names(current_iter_params) %in% 
+                c("mean_v", "a", "mean_z", "s", "dt", "mean_ter", "sv", "sz", "st0", "max_decision_time")]))
+  }, error = function(e) NULL)
 
-  if (is.null(current_sim_data) || nrow(current_sim_data) == 0) {
-    if(debug) cat("DEBUG: No simulation data returned, returning large error\n")
-    return(1e7) # Large error
-  }
-  
-  if(debug) cat("DEBUG: Simulation successful, got", nrow(current_sim_data), "trials\n")
+  if (is.null(sim_data) || nrow(sim_data) == 0) return(1e7)
 
-  # Calculate binned proportions for the *current simulated data*
+  # Calculate binned proportions efficiently
   sim_binned_props <- calculate_binned_rt_proportions(
-    current_sim_data,
-    rt_bins = rt_bins, # Use same bins as target
-    correct_choice_value = fixed_params$correct_choice_value %||% 1, # Get from fixed or default
+    sim_data,
+    rt_bins = rt_bins,
+    correct_choice_value = fixed_params$correct_choice_value %||% 1,
     error_choice_value = fixed_params$error_choice_value %||% 0
   )
 
-  # Merge with target counts to ensure alignment and get target N for each bin
-  # Target_binned_props should have: response_type, rt_bin_label, observed_n (from target)
-  # Sim_binned_props has: response_type, rt_bin_label, observed_prop (from sim)
+  # Calculate overall probabilities efficiently
+  sim_n_total <- sum(!is.na(sim_data$choice) & !is.na(sim_data$rt) & is.finite(sim_data$rt))
+  sim_p_correct <- sum(sim_data$choice == (fixed_params$correct_choice_value %||% 1), na.rm=TRUE) / sim_n_total
+  sim_p_error <- sum(sim_data$choice == (fixed_params$error_choice_value %||% 0), na.rm=TRUE) / sim_n_total
 
-  # Calculate overall P(Correct) and P(Error) from simulation
-  sim_n_total <- nrow(dplyr::filter(current_sim_data, !is.na(choice) & !is.na(rt) & is.finite(rt)))
-  sim_p_correct <- sum(current_sim_data$choice == (fixed_params$correct_choice_value %||% 1), na.rm=TRUE) / sim_n_total
-  sim_p_error   <- sum(current_sim_data$choice == (fixed_params$error_choice_value %||% 0), na.rm=TRUE) / sim_n_total
+  # Handle zero probabilities
+  if(sim_p_correct == 0 && any(target_binned_props$response_type == "Correct" & target_binned_props$observed_n > 0)) {
+    sim_p_correct <- small_constant_for_ll
+  }
+  if(sim_p_error == 0 && any(target_binned_props$response_type == "Error" & target_binned_props$observed_n > 0)) {
+    sim_p_error <- small_constant_for_ll
+  }
 
-  # If sim_p_correct or sim_p_error is 0, and target has counts there, this is bad.
-  # Add small constant to avoid p=0 if target has counts.
-  if(sim_p_correct == 0 && any(target_binned_props$response_type == "Correct" & target_binned_props$observed_n >0)) sim_p_correct = small_constant_for_ll
-  if(sim_p_error == 0 && any(target_binned_props$response_type == "Error" & target_binned_props$observed_n >0)) sim_p_error = small_constant_for_ll
+  # Efficient comparison calculation
+  comparison_df <- merge(
+    target_binned_props[, c("response_type", "rt_bin_label", "observed_n")],
+    sim_binned_props[, c("response_type", "rt_bin_label", "observed_prop")],
+    by = c("response_type", "rt_bin_label"),
+    all.x = TRUE
+  )
+  
+  # Calculate probabilities
+  comparison_df$sim_prop_within_resp <- ifelse(is.na(comparison_df$observed_prop), 0, comparison_df$observed_prop)
+  comparison_df$sim_prob_overall <- ifelse(
+    comparison_df$response_type == "Correct",
+    comparison_df$sim_prop_within_resp * sim_p_correct,
+    comparison_df$sim_prop_within_resp * sim_p_error
+  )
 
-
-  # Join target Ns with simulated proportions
-  comparison_df <- target_binned_props %>%
-    dplyr::select(response_type, rt_bin_label, target_n = observed_n) %>% # observed_n from target
-    dplyr::left_join(sim_binned_props %>% dplyr::select(response_type, rt_bin_label, sim_prop_within_resp = observed_prop),
-              by = c("response_type", "rt_bin_label")) %>%
-    dplyr::mutate(sim_prop_within_resp = ifelse(is.na(sim_prop_within_resp), 0, sim_prop_within_resp), # Bins with 0 sim count
-           # Calculate overall probability for this bin
-           sim_prob_overall = ifelse(response_type == "Correct",
-                                     sim_prop_within_resp * sim_p_correct,
-                                     sim_prop_within_resp * sim_p_error)
-    )
-
-  # Add small constant to predicted probabilities to avoid log(0)
+  # Ensure minimum probability and normalize
   comparison_df$sim_prob_overall <- pmax(comparison_df$sim_prob_overall, small_constant_for_ll)
-
-  # Ensure probabilities are properly normalized (should sum to 1)
   total_prob <- sum(comparison_df$sim_prob_overall, na.rm = TRUE)
-  if(abs(total_prob - 1.0) > 0.1) { # If far from 1, normalize
+  if(abs(total_prob - 1.0) > 0.1) {
     comparison_df$sim_prob_overall <- comparison_df$sim_prob_overall / total_prob
-    # Re-apply minimum to avoid log(0) after normalization
     comparison_df$sim_prob_overall <- pmax(comparison_df$sim_prob_overall, small_constant_for_ll)
   }
 
-  # Calculate log-likelihood (multinomial)
-  # LL = sum(N_observed_in_bin * log(P_predicted_for_bin))
-  # We want to MINIMIZE negative LL
-  neg_log_likelihood <- -sum(comparison_df$target_n * log(comparison_df$sim_prob_overall), na.rm = TRUE)
+  # Calculate negative log-likelihood
+  neg_log_likelihood <- -sum(comparison_df$observed_n * log(comparison_df$sim_prob_overall), na.rm = TRUE)
 
-  # Penalty for not producing choices of a type present in target
-  target_has_corrects <- any(target_binned_props$response_type == "Correct" & target_binned_props$observed_n > 0)
-  target_has_errors   <- any(target_binned_props$response_type == "Error" & target_binned_props$observed_n > 0)
-
-  if(target_has_corrects && sim_p_correct < small_constant_for_ll*10) neg_log_likelihood <- neg_log_likelihood + 1000
-  if(target_has_errors && sim_p_error < small_constant_for_ll*10) neg_log_likelihood <- neg_log_likelihood + 1000
-
+  # Add penalties for missing response types
+  if(any(target_binned_props$response_type == "Correct" & target_binned_props$observed_n > 0) && 
+     sim_p_correct < small_constant_for_ll*10) {
+    neg_log_likelihood <- neg_log_likelihood + 1000
+  }
+  if(any(target_binned_props$response_type == "Error" & target_binned_props$observed_n > 0) && 
+     sim_p_error < small_constant_for_ll*10) {
+    neg_log_likelihood <- neg_log_likelihood + 1000
+  }
 
   if (verbose) {
     cat("Iter: Params = [", paste(sprintf("%.3f", params_to_test), collapse = ", "),
         "], NegLL = ", sprintf("%.4f", neg_log_likelihood), "\n")
   }
-  if(!is.finite(neg_log_likelihood)) return(1e7) # Return large error if not finite
 
+  if(!is.finite(neg_log_likelihood)) return(1e7)
   return(neg_log_likelihood)
 }
 

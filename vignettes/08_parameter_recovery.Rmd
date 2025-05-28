@@ -57,9 +57,9 @@ true_parameters <- list(
   mean_v   = 0.15,    # Drift rate
   a        = 0.8,     # Threshold  
   mean_z   = 0.4,     # Starting point
-  s        = 0.1,     # Within-trial noise
+  s        = 0.3,     # Within-trial noise
   mean_ter = 0.12,    # Non-decision time
-  sv       = 0.08,    # Drift rate variability
+  sv       = 0.1,    # Drift rate variability
   sz       = 0.02,    # Starting point variability  
   st0      = 0.03     # Non-decision time variability
 )
@@ -75,7 +75,7 @@ target_data <- simulate_diffusion_experiment_variable(
   a        = true_parameters$a,
   mean_z   = true_parameters$mean_z,
   s        = true_parameters$s,
-  dt       = 0.001,
+  dt       = 0.01,
   mean_ter = true_parameters$mean_ter,
   sv       = true_parameters$sv,
   sz       = true_parameters$sz,
@@ -176,7 +176,7 @@ upper_bounds <- c(
 
 # Fixed parameters for simulation
 fixed_params <- list(
-  dt = 0.001,
+  dt = 0.01,
   correct_choice_value = 1,
   error_choice_value = 0
 )
@@ -194,7 +194,7 @@ cat("Starting parameter recovery with multiple optimization runs...\n")
 
 # Run optimization with multiple random starts
 recovery_results <- run_ddm_optimization_multi_start(
-  n_starts = 5,  # Number of different starting points
+  n_starts = 3,  # Number of different starting points
   target_stats_or_binned_props = target_binned_props,
   param_names_optim = param_names,
   initial_guesses_means = initial_means,
@@ -202,9 +202,9 @@ recovery_results <- run_ddm_optimization_multi_start(
   lower_bounds = lower_bounds,
   upper_bounds = upper_bounds,
   objective_fn_name = "ddm_binned_likelihood_objective",
-  n_sim_per_eval = 1000,  # Trials simulated per optimization step
+  n_sim_per_eval = 500,  # Trials simulated per optimization step
   fixed_params = fixed_params,
-  optim_maxit = 150,      # Maximum optimization iterations
+  optim_maxit = 100,      # Maximum optimization iterations
   rt_bins = rt_bins,
   constrain_z_to_a_div_2 = FALSE,  # Allow mean_z to be optimized independently
   verbose = FALSE
@@ -274,8 +274,7 @@ recovery_plot <- ggplot(recovery_comparison, aes(x = Parameter)) +
   labs(title = "Parameter Recovery Results",
        subtitle = "Blue = True Values, Red = Estimated Values",
        y = "Parameter Value",
-       color = "Type") +
-  facet_wrap(~ Parameter, scales = "free_y", ncol = 4)
+       color = "Type")
 
 print(recovery_plot)
 ```
