@@ -116,7 +116,8 @@ plot_list[[1]] <- {
          x = "Time Steps", y = "Evidence") +
     ylim(-6, 6) +
     annotate("text", x = max(df1$time) * 0.1, y = 5.5, label = "Upper Threshold", color = "red") +
-    annotate("text", x = max(df1$time) * 0.1, y = -5.5, label = "Lower Threshold", color = "red")
+    annotate("text", x = max(df1$time) * 0.1, y = -5.5, label = "Lower Threshold", color = "red")+
+    xlim(-0.5, 15)
 }
 
 # Trial 2: Negative drift
@@ -134,7 +135,8 @@ plot_list[[2]] <- {
     labs(title = "Trial 2: Negative Drift (μ = -0.15)",
          subtitle = paste("Choice:", trial2$choice, "| RT:", trial2$rt, "steps"),
          x = "Time Steps", y = "Evidence") +
-    ylim(-6, 6)
+    ylim(-6, 6)+
+    xlim(-0.5, 15)
 }
 
 # Trial 3: No drift
@@ -152,7 +154,8 @@ plot_list[[3]] <- {
     labs(title = "Trial 3: No Drift (μ = 0)",
          subtitle = paste("Choice:", trial3$choice, "| RT:", trial3$rt, "steps"),
          x = "Time Steps", y = "Evidence") +
-    ylim(-6, 6)
+    ylim(-6, 6) +
+    xlim(-0.5, 15)
 }
 
 # Arrange plots
@@ -208,7 +211,8 @@ for (i in 1:length(param_trials)) {
                        "high_threshold" = "High Threshold (a = 8)"),
          subtitle = paste("Choice:", trial_data$choice, "| RT:", trial_data$rt, "steps"),
          x = "Time Steps", y = "Evidence") +
-    ylim(-10, 10)
+    ylim(-10, 10) +
+    xlim(-0.5, 20)
 }
 
 do.call(grid.arrange, c(param_plots, ncol = 2))

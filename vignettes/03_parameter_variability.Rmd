@@ -1,0 +1,677 @@
+---
+title: "Understanding Parameter Variability in the DDM: From Fixed to Realistic Models"
+description: "A comprehensive tutorial on across-trial parameter variability in the DDM"
+order: 3
+author: "Dogukan Nami Oztas"
+date: "2025-05-16"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding Parameter Variability in the DDM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup_variability, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center',
+  fig.width = 10,
+  fig.height = 7
+)
+
+# Load necessary packages
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(scales)
+
+# Source the DDM simulation functions
+source("../R/02_ddm_simulator_basic.R")    # For standard DDM simulations
+source("../R/03_ddm_simulator_variable.R") # For DDM simulations with variability
+source("../R/utils/plot_parameter_comparison.R")
+
+# Set consistent theme
+theme_set(theme_minimal(base_size = 12))
+```
+
+## Introduction: Why Parameter Variability Matters
+
+In the basic DDM introduced in the previous vignette, we assumed that core parameters like drift rate (*v*), starting point (*z*), and non-decision time (*ter*) remain constant across all trials within an experimental condition. While this simplification is useful for understanding the model's basic mechanics, it's **unrealistic** for modeling actual human behavior.
+
+### The Problem with Fixed Parameters
+
+Consider what happens in a real experiment:
+
+- **Attention fluctuates**: Your focus isn't identical on trial 1 versus trial 500
+- **Stimulus quality varies**: Even "identical" stimuli have subtle differences  
+- **Processing efficiency changes**: You might get tired, distracted, or more practiced
+- **Strategic adjustments occur**: You might become more or less cautious over time
+
+These natural fluctuations mean that the "true" parameter values vary from trial to trial, even within the same experimental condition.
+
+### The Solution: Across-Trial Parameter Variability
+
+The **extended DDM** incorporates this reality by allowing key parameters to vary across trials according to specified distributions. This produces several important benefits:
+
+1. **More realistic RT distributions**: Captures the full shape of empirical RT data
+2. **Better error patterns**: Explains when errors are fast vs. slow  
+3. **Improved model fit**: Accounts for variability that fixed-parameter models miss
+4. **Richer theoretical insights**: Separates different sources of behavioral variation
+
+## The Mathematics of Parameter Variability
+
+### Core Idea: Parameters as Random Variables
+
+Instead of fixed values, parameters become **random variables** drawn from distributions:
+
+- **Drift rate**: $v_{trial} \sim \mathcal{N}(\mu_v, \sigma_v^2)$
+- **Starting point**: $z_{trial} \sim \mathcal{U}(\mu_z - \frac{s_z}{2}, \mu_z + \frac{s_z}{2})$  
+- **Non-decision time**: $ter_{trial} \sim \mathcal{U}(\mu_{ter} - \frac{s_{ter}}{2}, \mu_{ter} + \frac{s_{ter}}{2})$
+
+Where:
+- $\mu$ parameters are the **means** (what we estimated in the basic DDM)
+- $\sigma_v$ (**sv**) is the **standard deviation** of drift rate variability
+- $s_z$ (**sz**) is the **range** of starting point variability  
+- $s_{ter}$ (**st0**) is the **range** of non-decision time variability
+
+### Implementation in Our Simulator
+
+Our `simulate_diffusion_trial_variable()` function implements this by:
+
+1. **Sampling** trial-specific parameters from their distributions
+2. **Running** the evidence accumulation with those values
+3. **Recording** both the outcome and the parameters used
+
+Let's see this in action!
+
+## Part 1: Comparing Fixed vs. Variable Parameter Models
+
+### Setting Up the Comparison
+
+We'll start by comparing a basic DDM (fixed parameters) with a variable DDM using the same mean parameter values.
+
+```{r setup_comparison}
+# Shared simulation parameters
+n_trials <- 3000  # Large enough to see distributional differences
+base_params <- list(
+  mean_v = 0.15,    # Moderate positive drift
+  a = 0.7,          # Reasonable threshold
+  mean_z = 0.35,     # Unbiased start (a/2)
+  s = 0.3,         # Standard within-trial noise
+  mean_ter = 0.08,  # Typical non-decision time
+  dt = 0.001        # Fine time resolution
+)
+
+# Fixed DDM parameters (variability = 0)
+fixed_params <- c(base_params, list(sv = 0, sz = 0, st0 = 0))
+
+# Variable DDM parameters (realistic variability)
+variable_params <- c(base_params, list(
+  sv = 0.2,   # Moderate drift rate variability
+  sz = 0.1,   # Some starting point variability  
+  st0 = 0.04   # Small non-decision time variability
+))
+
+cat("Simulating Fixed DDM (sv = sz = st0 = 0)...")
+set.seed(123)
+data_fixed <- do.call(simulate_diffusion_experiment_variable, 
+                     c(list(n_trials = n_trials), fixed_params))
+data_fixed$model_type <- "Fixed Parameters"
+
+cat("\nSimulating Variable DDM (sv = 0.12, sz = 0.08, st0 = 0.04)...")
+set.seed(123) # Same seed for fair comparison
+data_variable <- do.call(simulate_diffusion_experiment_variable,
+                        c(list(n_trials = n_trials), variable_params))
+data_variable$model_type <- "Variable Parameters"
+
+cat("\nSimulations complete!")
+```
+
+### Visualizing the Dramatic Difference
+
+```{r compare_fixed_vs_variable, fig.height=8}
+# Combine data for plotting
+combined_data <- bind_rows(
+  data_fixed %>% select(rt, choice, model_type),
+  data_variable %>% select(rt, choice, model_type)
+) %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Lower Boundary", "Upper Boundary")),
+    model_type = factor(model_type, levels = c("Fixed Parameters", "Variable Parameters"))
+  )
+
+# Create comprehensive comparison plot
+p1 <- ggplot(combined_data, aes(x = rt, fill = model_type)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.5) +
+  facet_grid(model_type ~ choice_label, scales = "free_y") +
+  scale_fill_manual(values = c("Fixed Parameters" = "#E74C3C", 
+                              "Variable Parameters" = "#3498DB")) +
+  #scale_x_continuous(limits = c(0, 1.5), breaks = seq(0, 1.5, 0.3)) +
+  labs(
+    title = "The Dramatic Impact of Parameter Variability",
+    subtitle = "Same mean parameters, but very different RT distributions",
+    x = "Reaction Time (seconds)",
+    y = "Density",
+    fill = "Model Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold", size = 11),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12)
+  )
+
+print(p1)
+
+# Calculate and display summary statistics
+summary_stats <- combined_data %>%
+  group_by(model_type, choice_label) %>%
+  summarise(
+    N = n(),
+    Mean_RT = round(mean(rt), 3),
+    Median_RT = round(median(rt), 3),
+    SD_RT = round(sd(rt), 3),
+    Skewness = round((mean(rt) - median(rt)) / sd(rt), 3),
+    .groups = "drop"
+  )
+
+knitr::kable(summary_stats, 
+             caption = "Key Statistics: Fixed vs. Variable Parameter Models")
+```
+
+### Key Observations
+
+**Shape Transformation**: Parameter variability changes the RT distribution shape:
+
+- **Fixed model**: Symmetric, narrow distributions
+- **Variable model**: Right-skewed, wider distributions (more realistic!)
+
+**Skewness**: The variable model produces the **positive skew** universally observed in real RT data, while the fixed model does not.
+
+**Variability**: Real decisions show much more RT variability than fixed-parameter models predict.
+
+## Part 2: Understanding Each Variability Component
+
+Now let's systematically examine how each type of parameter variability affects the model's predictions.
+
+### 2.1 Drift Rate Variability (sv): The Skewness Creator
+
+Drift rate variability is often the **most important** variability parameter because it:
+- Creates realistic right-skewed RT distributions
+- Explains the relationship between correct and error RTs
+- Accounts for trial-to-trial fluctuations in attention and processing
+
+```{r drift_variability_analysis, fig.height=10}
+# Parameters for drift rate variability exploration
+sv_values <- c(0, 0.08, 0.16, 0.24)
+n_trials_sv <- 2000
+
+# Simulate across different sv values
+sv_data_list <- list()
+for (i in seq_along(sv_values)) {
+  sv_val <- sv_values[i]
+  set.seed(200 + i)
+  
+  params_sv <- c(base_params, list(sv = sv_val, sz = 0, st0 = 0))
+  data_sv <- do.call(simulate_diffusion_experiment_variable,
+                    c(list(n_trials = n_trials_sv), params_sv))
+  
+  data_sv$sv_condition <- paste0("sv = ", sv_val)
+  data_sv$sv_value <- sv_val
+  sv_data_list[[i]] <- data_sv
+}
+
+sv_combined <- bind_rows(sv_data_list) %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Lower Boundary", "Upper Boundary")),
+    sv_condition = factor(sv_condition, levels = paste0("sv = ", sv_values))
+  )
+
+# Create the visualization
+p_sv_density <- ggplot(sv_combined, aes(x = rt, fill = choice_label)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.3) +
+  facet_grid(sv_condition ~ choice_label) +
+  scale_fill_manual(values = c("Lower Boundary" = "#E67E22", 
+                              "Upper Boundary" = "#2ECC71")) +
+  #scale_x_continuous(limits = c(0, 2), breaks = seq(0, 2, 0.5)) +
+  labs(
+    title = "Effect of Drift Rate Variability (sv) on RT Distributions",
+    subtitle = "Higher sv creates more right-skewed distributions",
+    x = "Reaction Time (seconds)",
+    y = "Density",
+    fill = "Response Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+# Calculate skewness measures
+sv_skewness <- sv_combined %>%
+  group_by(sv_condition, choice_label) %>%
+  summarise(
+    Mean_RT = round(mean(rt), 3),
+    Median_RT = round(median(rt), 3),
+    Skewness = round((mean(rt) - median(rt)) / sd(rt), 3),
+    .groups = "drop"
+  ) %>%
+  select(sv_condition, choice_label, Skewness) %>%
+  pivot_wider(names_from = choice_label, values_from = Skewness)
+
+print(p_sv_density)
+knitr::kable(sv_skewness, caption = "Skewness by sv Value")
+```
+
+**Key Insights about Drift Rate Variability:**
+
+1. **Skewness increases with sv**: Higher values create more pronounced right tails
+2. **Both responses affected**: sv influences the shape of both correct and error RT distributions  
+3. **Realistic distributions**: sv ≥ 0.1 produces distributions similar to real data
+
+### 2.2 Starting Point Variability (sz): The Fast Error Generator
+
+Starting point variability primarily affects:
+- The probability of fast errors (when you start close to the wrong boundary)
+- Overall RT variance (but less dramatically than sv)
+- Response bias patterns
+
+```{r starting_point_variability, fig.height=8}
+sz_values <- c(0, 0.05, 0.10, 0.15)
+n_trials_sz <- 2000
+
+# Simulate across different sz values  
+sz_data_list <- list()
+for (i in seq_along(sz_values)) {
+  sz_val <- sz_values[i]
+  set.seed(300 + i)
+  
+  params_sz <- c(base_params, list(sv = 0.1, sz = sz_val, st0 = 0))
+  data_sz <- do.call(simulate_diffusion_experiment_variable,
+                    c(list(n_trials = n_trials_sz), params_sz))
+  
+  data_sz$sz_condition <- paste0("sz = ", sz_val)
+  data_sz$sz_value <- sz_val
+  sz_data_list[[i]] <- data_sz
+}
+
+sz_combined <- bind_rows(sz_data_list) %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Lower Boundary", "Upper Boundary")),
+    sz_condition = factor(sz_condition, levels = paste0("sz = ", sz_values))
+  )
+
+# Focus on fast errors - look at fastest 20% of responses
+fast_errors_analysis <- sz_combined %>%
+  group_by(sz_condition) %>%
+  mutate(rt_percentile = ntile(rt, 5)) %>%
+  filter(rt_percentile == 1) %>%  # Fastest 20%
+  group_by(sz_condition, choice_label) %>%
+  summarise(
+    N_fast = n(),
+    Prop_fast = n() / nrow(filter(sz_combined, sz_condition == first(sz_condition))),
+    .groups = "drop"
+  )
+
+# Visualization focusing on leading edge
+p_sz <- ggplot(sz_combined, aes(x = rt, fill = choice_label)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.3) +
+  facet_grid(sz_condition ~ choice_label) +
+  scale_fill_manual(values = c("Lower Boundary" = "#E67E22", 
+                              "Upper Boundary" = "#2ECC71")) +
+  #scale_x_continuous(limits = c(0, 1.5), breaks = seq(0, 1.5, 0.3)) +
+  labs(
+    title = "Effect of Starting Point Variability (sz) on RT Distributions",
+    subtitle = "Higher sz increases fast errors and overall variance",
+    x = "Reaction Time (seconds)",
+    y = "Density",
+    fill = "Response Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+print(p_sz)
+knitr::kable(fast_errors_analysis, 
+             caption = "Fast Response Analysis: Effect of sz")
+```
+
+### 2.3 Non-Decision Time Variability (st0): The Leading Edge Smoother
+
+Non-decision time variability has a distinctive effect:
+- "Smears out" the leading edge of RT distributions
+- Makes the fastest responses more variable
+- Has relatively subtle effects compared to sv and sz
+
+```{r nondecision_time_variability, fig.height=8}
+st0_values <- c(0, 0.02, 0.04, 0.06)
+n_trials_st0 <- 2000
+
+# Simulate across different st0 values
+st0_data_list <- list()
+for (i in seq_along(st0_values)) {
+  st0_val <- st0_values[i]
+  set.seed(400 + i)
+  
+  params_st0 <- c(base_params, list(sv = 0.1, sz = 0, st0 = st0_val))
+  data_st0 <- do.call(simulate_diffusion_experiment_variable,
+                     c(list(n_trials = n_trials_st0), params_st0))
+  
+  data_st0$st0_condition <- paste0("st0 = ", st0_val)
+  data_st0$st0_value <- st0_val
+  st0_data_list[[i]] <- data_st0
+}
+
+st0_combined <- bind_rows(st0_data_list) %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Lower Boundary", "Upper Boundary")),
+    st0_condition = factor(st0_condition, levels = paste0("st0 = ", st0_values))
+  )
+
+# Visualization with focus on leading edge
+p_st0 <- ggplot(st0_combined, aes(x = rt, fill = choice_label)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.3) +
+  facet_grid(st0_condition ~ choice_label) +
+  scale_fill_manual(values = c("Lower Boundary" = "#E67E22", 
+                              "Upper Boundary" = "#2ECC71")) +
+  #scale_x_continuous(limits = c(0, 1.2), breaks = seq(0, 1.2, 0.2)) +
+  labs(
+    title = "Effect of Non-Decision Time Variability (st0) on RT Distributions",
+    subtitle = "Higher st0 smooths the leading edge of distributions",
+    x = "Reaction Time (seconds)",
+    y = "Density",
+    fill = "Response Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+# Calculate leading edge statistics (10th percentile)
+leading_edge_stats <- st0_combined %>%
+  group_by(st0_condition, choice_label) %>%
+  summarise(
+    Q10 = round(quantile(rt, 0.1), 3),
+    Q25 = round(quantile(rt, 0.25), 3),
+    SD_RT = round(sd(rt), 3),
+    .groups = "drop"
+  )
+
+print(p_st0)
+knitr::kable(leading_edge_stats, 
+             caption = "Leading Edge Analysis: Effect of st0")
+```
+
+## Part 3: The Combined Effects - Creating Realistic DDM Behavior
+
+### Putting It All Together
+
+Real behavior reflects the combined influence of all variability sources. Let's simulate a "realistic" DDM with all three types of variability:
+
+```{r realistic_ddm_simulation, fig.height=10}
+# Realistic parameter set
+realistic_params <- list(
+  mean_v = 0.2,   # Moderate drift rate
+  a = 0.8,         # Reasonable threshold  
+  mean_z = 0.4,   # Slightly biased start
+  s = 0.2,         # Standard noise
+  mean_ter = 0.18, # Typical non-decision time
+  sv = 0.3,       # Substantial drift variability
+  sz = 0.1,       # Moderate starting point variability
+  st0 = 0.06,      # Small non-decision time variability
+  dt = 0.001
+)
+
+# Simulate realistic DDM
+set.seed(500)
+realistic_data <- do.call(simulate_diffusion_experiment_variable,
+                         c(list(n_trials = 3000), realistic_params))
+
+# Also simulate a "textbook" version (no variability) for comparison
+textbook_params <- realistic_params
+textbook_params[c("sv", "sz", "st0")] <- 0
+
+set.seed(500)
+textbook_data <- do.call(simulate_diffusion_experiment_variable,
+                        c(list(n_trials = 3000), textbook_params))
+
+# Combine and prepare data
+comparison_data <- bind_rows(
+  realistic_data %>% mutate(model = "Realistic DDM\n(with variability)"),
+  textbook_data %>% mutate(model = "Textbook DDM\n(no variability)")
+) %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Error Responses", "Correct Responses")),
+    model = factor(model, levels = c("Textbook DDM\n(no variability)", 
+                                   "Realistic DDM\n(with variability)"))
+  )
+
+# Create comprehensive comparison
+p_realistic <- ggplot(comparison_data, aes(x = rt, fill = model)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.5) +
+  facet_grid(model ~ choice_label) +
+  scale_fill_manual(values = c("Textbook DDM\n(no variability)" = "#95A5A6",
+                              "Realistic DDM\n(with variability)" = "#8E44AD")) +
+  #scale_x_continuous(limits = c(0, 2), breaks = seq(0, 2, 0.4)) +
+  labs(
+    title = "Realistic vs. Textbook DDM: The Full Picture",
+    subtitle = "Parameter variability creates distributions that match real human data",
+    x = "Reaction Time (seconds)",
+    y = "Density",
+    fill = "Model Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold", size = 11),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12)
+  )
+
+print(p_realistic)
+
+# Statistical comparison
+model_comparison <- comparison_data %>%
+  group_by(model, choice_label) %>%
+  summarise(
+    N = n(),
+    Mean_RT = round(mean(rt), 3),
+    Median_RT = round(median(rt), 3),
+    SD_RT = round(sd(rt), 3),
+    Skewness = round((mean(rt) - median(rt)) / sd(rt), 3),
+    Min_RT = round(min(rt), 3),
+    Q90_RT = round(quantile(rt, 0.9), 3),
+    .groups = "drop"
+  )
+
+knitr::kable(model_comparison, 
+             caption = "Comprehensive Model Comparison")
+```
+
+### What Makes the Realistic DDM "Realistic"?
+
+The realistic DDM captures several key features of real human RT data:
+
+1. **Right-skewed distributions**: Long right tails for both correct and error responses
+2. **Appropriate variability**: RT standard deviations that match empirical data
+3. **Realistic leading edge**: Smoothed fastest responses, not sharp cutoffs
+4. **Error patterns**: Mix of fast and slow errors, depending on trial-specific parameters
+
+## Part 4: Understanding Trial-by-Trial Parameter Variation
+
+### Examining the Sampled Parameters
+
+Let's look at the actual parameter values sampled on each trial to understand the variability process:
+
+```{r trial_by_trial_analysis, fig.height=8}
+# Use the realistic simulation data which includes trial-specific parameters
+param_analysis_data <- realistic_data %>%
+  filter(!is.na(rt), !is.na(choice)) %>%
+  mutate(
+    choice_label = factor(choice, levels = c(0, 1), 
+                         labels = c("Error", "Correct")),
+    rt_fast = rt < quantile(rt, 0.25, na.rm = TRUE),
+    rt_slow = rt > quantile(rt, 0.75, na.rm = TRUE)
+  )
+
+# Create panel plots showing parameter distributions
+p1_params <- param_analysis_data %>%
+  select(v_trial, z_trial, ter_trial, choice_label) %>%
+  pivot_longer(cols = c(v_trial, z_trial, ter_trial), 
+               names_to = "parameter", values_to = "value") %>%
+  mutate(
+    parameter = factor(parameter, 
+                      levels = c("v_trial", "z_trial", "ter_trial"),
+                      labels = c("Drift Rate (v)", "Starting Point (z)", "Non-Decision Time (ter)"))
+  ) %>%
+  ggplot(aes(x = value, fill = choice_label)) +
+  geom_density(alpha = 0.7, color = "black", linewidth = 0.3) +
+  facet_grid(parameter ~ choice_label, scales = "free_y") +
+  scale_fill_manual(values = c("Error" = "#E74C3C", "Correct" = "#27AE60")) +
+  labs(
+    title = "Distribution of Trial-Specific Parameters",
+    subtitle = "How parameter values vary across trials",
+    x = "Parameter Value",
+    y = "Density",
+    fill = "Response Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold")
+  )
+
+print(p1_params)
+
+# Examine parameter-RT relationships
+rt_param_correlations <- param_analysis_data %>%
+  summarise(
+    cor_v_rt = round(cor(v_trial, rt, use = "complete.obs"), 3),
+    cor_z_rt = round(cor(z_trial, rt, use = "complete.obs"), 3),
+    cor_ter_rt = round(cor(ter_trial, rt, use = "complete.obs"), 3)
+  )
+
+cat("Correlations between trial parameters and RT:\n")
+cat("v_trial - RT:", rt_param_correlations$cor_v_rt, "\n")
+cat("z_trial - RT:", rt_param_correlations$cor_z_rt, "\n") 
+cat("ter_trial - RT:", rt_param_correlations$cor_ter_rt, "\n")
+```
+
+### The Relationship Between Parameters and Outcomes
+
+```{r parameter_outcome_relationships, fig.height=6}
+# Create scatter plots showing parameter-RT relationships
+p_relationships <- param_analysis_data %>%
+  sample_n(1000) %>%  # Sample for clearer visualization
+  select(rt, v_trial, z_trial, ter_trial, choice_label) %>%
+  pivot_longer(cols = c(v_trial, z_trial, ter_trial), 
+               names_to = "parameter", values_to = "value") %>%
+  mutate(
+    parameter = factor(parameter, 
+                      levels = c("v_trial", "z_trial", "ter_trial"),
+                      labels = c("Drift Rate (v)", "Starting Point (z)", "Non-Decision Time (ter)"))
+  ) %>%
+  ggplot(aes(x = value, y = rt, color = choice_label)) +
+  geom_point(alpha = 0.6, size = 0.8) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1) +
+  facet_wrap(~ parameter, scales = "free_x") +
+  scale_color_manual(values = c("Error" = "#E74C3C", "Correct" = "#27AE60")) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  labs(
+    title = "How Trial-Specific Parameters Influence RT",
+    subtitle = "Each point represents one trial",
+    x = "Parameter Value",
+    y = "Reaction Time (seconds)",
+    color = "Response Type"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold")
+  )
+
+print(p_relationships)
+```
+
+**Key Relationships:**
+
+- **Drift rate (v)**: Higher values → faster RTs (stronger evidence accumulation)
+- **Starting point (z)**: Variable effects depending on choice direction
+- **Non-decision time (ter)**: Direct additive effect on total RT
+
+## Part 5: Practical Implications and Guidelines
+
+### When to Include Parameter Variability
+
+**Always include** parameter variability when:
+- You want realistic RT distributions that match human data
+- You're fitting the DDM to empirical data
+- You need to explain error RT patterns (fast vs. slow errors)
+- You have sufficient data (>1000 trials per condition)
+
+**Consider simplified models** when:
+- Teaching basic DDM concepts
+- You have very limited data (<200 trials)
+- Computational efficiency is critical
+- You're doing theoretical explorations
+
+### Typical Parameter Values
+
+Based on empirical DDM studies, typical variability parameter ranges are:
+
+```{r parameter_guidelines, echo=FALSE}
+guidelines <- data.frame(
+  Parameter = c("sv (drift variability)", "sz (starting point variability)", 
+                "st0 (non-decision time variability)"),
+  `Typical Range` = c("0.05 - 0.30", "0.02 - 0.15", "0.01 - 0.10"),
+  `Common Value` = c("0.10 - 0.15", "0.05 - 0.08", "0.03 - 0.05"),
+  `Psychological Meaning` = c(
+    "Attention fluctuations, stimulus variability",
+    "Strategic adjustments, expectation changes", 
+    "Motor preparation variability"
+  )
+)
+
+knitr::kable(guidelines, caption = "Parameter Variability Guidelines")
+```
+
+### Model Selection Strategy
+
+1. **Start simple**: Begin with fixed parameters to understand basic effects
+2. **Add variability**: Include sv first (biggest impact), then sz and st0
+3. **Compare models**: Use model comparison criteria (AIC, BIC) to justify complexity
+4. **Validate**: Ensure parameter estimates are reasonable and stable
+
+## Summary: The Power of Parameter Variability
+
+Parameter variability transforms the DDM from a theoretical tool into a realistic model of human decision-making. The key insights are:
+
+### Theoretical Insights
+- **sv** (drift variability) is the primary driver of realistic RT distribution shapes
+- **sz** (starting point variability) explains fast error patterns
+- **st0** (non-decision time variability) accounts for motor and encoding fluctuations
+- Combined effects create distributions that closely match human data
+
+### Practical Implications  
+- Parameter variability is essential for fitting real data
+- Different variability sources have distinct signatures
+- Model complexity should match data quantity and research goals
+- Understanding variability helps interpret individual differences
+
+### Conclusion
+
+Across-trial parameter variability is a critical extension to the basic DDM. By allowing drift rate, starting point, and non-decision time to fluctuate from trial to trial, the model can more accurately capture the richness and complexity of human decision-making behavior, particularly the full shape of RT distributions and the patterns of error responses.
+

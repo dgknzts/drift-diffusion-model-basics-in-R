@@ -176,7 +176,7 @@ upper_bounds <- c(
 
 # Fixed parameters for simulation
 fixed_params <- list(
-  dt = 0.01,
+  dt = 0.001,
   correct_choice_value = 1,
   error_choice_value = 0
 )
@@ -194,7 +194,7 @@ cat("Starting parameter recovery with multiple optimization runs...\n")
 
 # Run optimization with multiple random starts
 recovery_results <- run_ddm_optimization_multi_start(
-  n_starts = 3,  # Number of different starting points
+  n_starts = 15,  # Number of different starting points
   target_stats_or_binned_props = target_binned_props,
   param_names_optim = param_names,
   initial_guesses_means = initial_means,
@@ -202,9 +202,9 @@ recovery_results <- run_ddm_optimization_multi_start(
   lower_bounds = lower_bounds,
   upper_bounds = upper_bounds,
   objective_fn_name = "ddm_binned_likelihood_objective",
-  n_sim_per_eval = 500,  # Trials simulated per optimization step
+  n_sim_per_eval = 1000,  # Trials simulated per optimization step
   fixed_params = fixed_params,
-  optim_maxit = 100,      # Maximum optimization iterations
+  optim_maxit = 150,      # Maximum optimization iterations
   rt_bins = rt_bins,
   constrain_z_to_a_div_2 = FALSE,  # Allow mean_z to be optimized independently
   verbose = FALSE
