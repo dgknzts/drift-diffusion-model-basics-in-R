@@ -15,57 +15,57 @@
 #'
 #' @return NULL (invisible). Throws informative errors if validation fails.
 #' @keywords internal
-validate_ddm_parameters <- function(v, a, z, s = 0.1, dt = 0.001, 
+validate_ddm_parameters <- function(v, a, z, s = 0.1, dt = 0.001,
                                    ter = 0.1, max_decision_time = 5.0,
                                    function_name = "DDM function") {
-  
+
   # Check for required parameters
   if (missing(v)) stop(paste(function_name, ": 'v' (drift rate) is required."))
   if (missing(a)) stop(paste(function_name, ": 'a' (threshold) is required."))
   if (missing(z)) stop(paste(function_name, ": 'z' (starting point) is required."))
-  
+
   # Validate parameter types and ranges
   if (!is.numeric(v) || length(v) != 1) {
     stop(paste(function_name, ": 'v' must be a single numeric value."))
   }
-  
+
   if (!is.numeric(a) || length(a) != 1 || a <= 0) {
     stop(paste(function_name, ": 'a' must be a single positive numeric value."))
   }
-  
+
   if (!is.numeric(z) || length(z) != 1 || z <= 0 || z >= a) {
     stop(paste(function_name, ": 'z' must be between 0 and 'a' (exclusive). Current: z =", z, ", a =", a))
   }
-  
+
   if (!is.numeric(s) || length(s) != 1 || s <= 0) {
     stop(paste(function_name, ": 's' must be a single positive numeric value."))
   }
-  
+
   if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) {
     stop(paste(function_name, ": 'dt' must be a single positive numeric value."))
   }
-  
+
   if (!is.numeric(ter) || length(ter) != 1 || ter < 0) {
     stop(paste(function_name, ": 'ter' must be a single non-negative numeric value."))
   }
-  
+
   if (!is.numeric(max_decision_time) || length(max_decision_time) != 1 || max_decision_time <= 0) {
     stop(paste(function_name, ": 'max_decision_time' must be a single positive numeric value."))
   }
-  
+
   # Warnings for potentially problematic parameter combinations
   if (dt > 0.1) {
     warning(paste(function_name, ": Large time step (dt =", dt, ") may affect simulation accuracy. Consider dt <= 0.01."))
   }
-  
+
   if (abs(v) > 5) {
     warning(paste(function_name, ": Very large drift rate (|v| =", abs(v), ") may lead to very fast decisions."))
   }
-  
+
   if (z/a < 0.1 || z/a > 0.9) {
     warning(paste(function_name, ": Extreme starting point bias (z/a =", round(z/a, 3), "). Consider 0.1 < z/a < 0.9."))
   }
-  
+
   invisible(NULL)
 }
 
@@ -133,14 +133,14 @@ simulate_diffusion_trial <- function(v,
                                      dt = 0.001,
                                      ter = 0.1,
                                      max_decision_time = 5.0) {
-  
+
   # Parameter validation
   validate_ddm_parameters(v, a, z, s, dt, ter, max_decision_time, "simulate_diffusion_trial")
-  
+
   evidence <- z
   current_decision_time <- 0
   max_steps <- max_decision_time / dt # Convert max_decision_time to number of steps
-  
+
   # Simulate the evidence accumulation process
   time_steps_taken <- 0
   while (evidence > 0 && evidence < a && time_steps_taken < max_steps) {
@@ -149,13 +149,13 @@ simulate_diffusion_trial <- function(v,
     # deterministic_part = v * dt
     # random_part = s * sqrt(dt) * N(0,1) where N(0,1) is a standard normal deviate
     increment <- rnorm(n = 1, mean = v * dt, sd = s * sqrt(dt))
-    
+
     evidence <- evidence + increment
     time_steps_taken <- time_steps_taken + 1
   }
-  
+
   decision_time <- time_steps_taken * dt
-  
+
   # Determine outcome
   if (time_steps_taken >= max_steps) {
     # Max decision time reached without hitting a boundary
@@ -172,7 +172,7 @@ simulate_diffusion_trial <- function(v,
     rt <- decision_time + ter
     decision_time_output <- decision_time
   }
-  
+
   return(list(choice = choice, rt = rt, decision_time = decision_time_output))
 }
 
@@ -215,32 +215,32 @@ simulate_diffusion_trial <- function(v,
 #' #> 3     3      0 0.3830001     0.1830001
 #' #> 4     4      1 0.7940001     0.5940001
 #' #> 5     5      0 0.3940001     0.1940001
-simulate_diffusion_experiment <- function(n_trials = 100, 
+simulate_diffusion_experiment <- function(n_trials = 100,
                                           v,
-                                          a, 
-                                          z, 
+                                          a,
+                                          z,
                                           s = 0.1,
                                           dt = 0.001,
                                           ter = 0.1,
                                           max_decision_time = 5.0,
                                           verbose = FALSE) {
-  
+
   # Validate parameters
   validate_ddm_parameters(v, a, z, s, dt, ter, max_decision_time, "simulate_diffusion_experiment")
-  
+
   if (!is.numeric(n_trials) || length(n_trials) != 1 || n_trials <= 0 || n_trials != round(n_trials)) {
     stop("'n_trials' must be a single positive integer.")
   }
-  
+
   if (verbose) {
     cat("Simulating", n_trials, "DDM trials with parameters:\n")
     cat("  v =", v, ", a =", a, ", z =", z, ", s =", s, ", ter =", ter, ", dt =", dt, "\n")
     cat("  Progress: ")
   }
-  
+
   # Create an empty list to store results
   results_list <- vector("list", n_trials)
-  
+
   # Run the simulation n_trials times and store results
   for (i in 1:n_trials) {
     results_list[[i]] <- simulate_diffusion_trial(
@@ -252,15 +252,15 @@ simulate_diffusion_experiment <- function(n_trials = 100,
       ter = ter,
       max_decision_time = max_decision_time
     )
-    
+
     # Progress indicator
     if (verbose && i %% max(1, round(n_trials/10)) == 0) {
       cat(round(100 * i / n_trials), "% ")
     }
   }
-  
+
   if (verbose) cat("\nCompleted!\n")
-  
+
   # Convert the list of lists into a data frame
   df_results <- data.frame(
     trial = 1:n_trials,
@@ -268,7 +268,7 @@ simulate_diffusion_experiment <- function(n_trials = 100,
     rt = sapply(results_list, function(trial_output) trial_output$rt),
     decision_time = sapply(results_list, function(trial_output) trial_output$decision_time)
   )
-  
+
   return(df_results)
 }
 
@@ -310,31 +310,31 @@ simulate_diffusion_trial_with_path <- function(v,
                                                max_decision_time = 5.0) {
   # Parameter validation
   validate_ddm_parameters(v, a, z, s, dt, ter, max_decision_time, "simulate_diffusion_trial_with_path")
-  
+
   evidence <- z
   current_decision_time <- 0
   max_steps <- max_decision_time / dt
-  
+
   # Pre-allocate for path data for efficiency (estimate max size)
   # Add a little buffer to max_steps for the case where it exactly hits max_steps
   estimated_path_length <- as.integer(max_steps + 10)
   path_time_s <- numeric(estimated_path_length)
   path_evidence <- numeric(estimated_path_length)
-  
+
   time_steps_taken <- 0
   path_idx <- 1 # Index for storing path data
-  
+
   # Store initial state
   path_time_s[path_idx] <- current_decision_time
   path_evidence[path_idx] <- evidence
   path_idx <- path_idx + 1
-  
+
   while (evidence > 0 && evidence < a && time_steps_taken < max_steps) {
     increment <- rnorm(n = 1, mean = v * dt, sd = s * sqrt(dt))
     evidence <- evidence + increment
     time_steps_taken <- time_steps_taken + 1
     current_decision_time <- time_steps_taken * dt
-    
+
     # Store path data
     if (path_idx <= estimated_path_length) {
       path_time_s[path_idx] <- current_decision_time
@@ -347,16 +347,16 @@ simulate_diffusion_trial_with_path <- function(v,
     }
     path_idx <- path_idx + 1
   }
-  
+
   decision_time <- current_decision_time # or time_steps_taken * dt
-  
+
   # Trim unused parts of pre-allocated vectors
   actual_path_length <- path_idx - 1
   path_df <- data.frame(
     time_s = path_time_s[1:actual_path_length],
     evidence = path_evidence[1:actual_path_length]
   )
-  
+
   if (time_steps_taken >= max_steps) {
     choice <- NA
     rt <- NA
@@ -370,7 +370,7 @@ simulate_diffusion_trial_with_path <- function(v,
     rt <- decision_time + ter
     decision_time_output <- decision_time
   }
-  
+
   return(list(choice = choice,
               rt = rt,
               decision_time = decision_time_output,
@@ -384,7 +384,7 @@ simulate_diffusion_trial_with_path <- function(v,
 #' statistics for DDM simulation results.
 #'
 #' @param ddm_data Data frame. Output from `simulate_diffusion_experiment()`.
-#' @param correct_response Integer. Which choice (0 or 1) is considered "correct" 
+#' @param correct_response Integer. Which choice (0 or 1) is considered "correct"
 #'   for accuracy calculations. If NULL, accuracy is not calculated. Default is 1.
 #'
 #' @return A list containing summary statistics:
@@ -406,21 +406,21 @@ simulate_diffusion_trial_with_path <- function(v,
 #' summary_stats <- summarize_ddm_data(data, correct_response = 1)
 #' print(summary_stats$rt_overall)
 summarize_ddm_data <- function(ddm_data, correct_response = 1) {
-  
+
   if (!is.data.frame(ddm_data)) {
     stop("'ddm_data' must be a data frame from simulate_diffusion_experiment()")
   }
-  
+
   required_cols <- c("trial", "choice", "rt", "decision_time")
   if (!all(required_cols %in% names(ddm_data))) {
     stop("'ddm_data' must contain columns: ", paste(required_cols, collapse = ", "))
   }
-  
+
   n_trials <- nrow(ddm_data)
   n_valid <- sum(!is.na(ddm_data$choice))
   n_timeout <- sum(is.na(ddm_data$choice))
   timeout_rate <- n_timeout / n_trials
-  
+
   # Choice proportions
   valid_data <- ddm_data[!is.na(ddm_data$choice), ]
   choice_proportions <- if (nrow(valid_data) > 0) {
@@ -428,14 +428,14 @@ summarize_ddm_data <- function(ddm_data, correct_response = 1) {
   } else {
     table(numeric(0))
   }
-  
+
   # Accuracy
   accuracy <- if (!is.null(correct_response) && nrow(valid_data) > 0) {
     mean(valid_data$choice == correct_response)
   } else {
     NA
   }
-  
+
   # RT statistics helper function
   calc_rt_stats <- function(rt_values) {
     if (length(rt_values) == 0 || all(is.na(rt_values))) {
@@ -447,7 +447,7 @@ summarize_ddm_data <- function(ddm_data, correct_response = 1) {
       return(list(n = 0, mean = NA, median = NA, sd = NA, min = NA, max = NA,
                   q25 = NA, q75 = NA, skewness = NA))
     }
-    
+
     list(
       n = length(rt_clean),
       mean = mean(rt_clean),
@@ -460,15 +460,15 @@ summarize_ddm_data <- function(ddm_data, correct_response = 1) {
       skewness = (mean(rt_clean) - median(rt_clean)) / sd(rt_clean)
     )
   }
-  
+
   # Overall RT statistics
   rt_overall <- calc_rt_stats(valid_data$rt)
   decision_time_overall <- calc_rt_stats(valid_data$decision_time)
-  
+
   # RT statistics by choice
   rt_by_choice <- list()
   decision_time_by_choice <- list()
-  
+
   for (choice_val in unique(valid_data$choice)) {
     if (!is.na(choice_val)) {
       choice_data <- valid_data[valid_data$choice == choice_val, ]
@@ -476,7 +476,7 @@ summarize_ddm_data <- function(ddm_data, correct_response = 1) {
       decision_time_by_choice[[paste0("choice_", choice_val)]] <- calc_rt_stats(choice_data$decision_time)
     }
   }
-  
+
   return(list(
     n_trials = n_trials,
     n_valid = n_valid,
@@ -512,17 +512,17 @@ summarize_ddm_data <- function(ddm_data, correct_response = 1) {
 #' # Create parameter sets for different conditions
 #' easy_params <- create_ddm_params(v = 0.3, a = 1.0, z = 0.5, name = "Easy Condition")
 #' hard_params <- create_ddm_params(v = 0.1, a = 1.0, z = 0.5, name = "Hard Condition")
-#' 
+#'
 #' print(easy_params)
-create_ddm_params <- function(v, a, z, s = 0.1, dt = 0.001, ter = 0.1, 
+create_ddm_params <- function(v, a, z, s = 0.1, dt = 0.001, ter = 0.1,
                               max_decision_time = 5.0, name = NULL) {
-  
+
   # Validate parameters
   validate_ddm_parameters(v, a, z, s, dt, ter, max_decision_time, "create_ddm_params")
-  
+
   params <- list(
     v = v,
-    a = a, 
+    a = a,
     z = z,
     s = s,
     dt = dt,
@@ -530,7 +530,7 @@ create_ddm_params <- function(v, a, z, s = 0.1, dt = 0.001, ter = 0.1,
     max_decision_time = max_decision_time,
     name = name
   )
-  
+
   class(params) <- "ddm_params"
   return(params)
 }
@@ -584,7 +584,7 @@ print.ddm_params <- function(x, ...) {
 create_parameter_grid <- function(v_values, a_values, z_values,
                                   s_values = 0.1, ter_values = 0.1,
                                   z_as_proportion = FALSE) {
-  
+
   if (z_as_proportion) {
     # Create grid with proportional z values
     base_grid <- expand.grid(
@@ -608,7 +608,7 @@ create_parameter_grid <- function(v_values, a_values, z_values,
       stringsAsFactors = FALSE
     )
   }
-  
+
   # Validate that all z values are between 0 and a
   valid_rows <- base_grid$z > 0 & base_grid$z < base_grid$a
   if (!all(valid_rows)) {
@@ -616,10 +616,10 @@ create_parameter_grid <- function(v_values, a_values, z_values,
     warning(paste("Removed", n_invalid, "parameter combinations where z was not between 0 and a."))
     base_grid <- base_grid[valid_rows, ]
   }
-  
+
   # Add parameter set identifiers
   base_grid$param_set <- paste0("set_", seq_len(nrow(base_grid)))
-  
+
   return(base_grid)
 }
 
@@ -638,7 +638,7 @@ create_parameter_grid <- function(v_values, a_values, z_values,
 #   )
 #   cat("Single DDM Trial Result:\n")
 #   print(single_ddm_trial)
-#   
+#
 #   # Test a small experiment
 #   set.seed(101112)
 #   ddm_experiment_results <- simulate_diffusion_experiment(
@@ -651,21 +651,21 @@ create_parameter_grid <- function(v_values, a_values, z_values,
 #   )
 #   cat("\nDDM Experiment Results (first few trials):\n")
 #   print(head(ddm_experiment_results))
-#   
+#
 #   # Example summary statistics
 #   summary_stats <- summarize_ddm_data(ddm_experiment_results, correct_response = 1)
 #   cat("\nSummary Statistics:\n")
 #   print(summary_stats$rt_overall)
-#   
+#
 #   # Example parameter creation
 #   params <- create_ddm_params(v = 0.2, a = 1.0, z = 0.5, name = "Example")
 #   print(params)
-#   
+#
 #   # Example for plotting RT distributions (requires ggplot2 and dplyr)
 #   if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)) {
 #     library(ggplot2)
 #     library(dplyr)
-#     
+#
 #     set.seed(131415)
 #     large_ddm_data <- simulate_diffusion_experiment(
 #       n_trials = 2000,
@@ -677,10 +677,10 @@ create_parameter_grid <- function(v_values, a_values, z_values,
 #       dt = 0.001,    # Standard time step
 #       max_decision_time = 4 # Default
 #     )
-#     
+#
 #     # Filter out NA RTs for plotting
 #     plot_data <- large_ddm_data %>% filter(!is.na(rt))
-#     
+#
 #     if (nrow(plot_data) > 0) {
 #       p <- ggplot(plot_data, aes(x = rt, fill = factor(choice))) +
 #         geom_histogram(binwidth = 0.05, alpha = 0.7, position = "identity") +
@@ -691,11 +691,11 @@ create_parameter_grid <- function(v_values, a_values, z_values,
 #              fill = "Choice") +
 #         theme_minimal()
 #       print(p)
-#       
+#
 #       # Choice proportions
 #       cat("\nChoice Proportions (1=Upper, 0=Lower):\n")
 #       print(prop.table(table(plot_data$choice, useNA = "ifany")))
-#       
+#
 #     } else {
 #       cat("\nNo valid trials to plot (all may have hit max_decision_time).\n")
 #     }
@@ -703,5 +703,231 @@ create_parameter_grid <- function(v_values, a_values, z_values,
 #     cat("\nInstall ggplot2 and dplyr packages to see example plots (run: install.packages(c(\"ggplot2\", \"dplyr\")) ).\n")
 #   }
 # }
+
+
+# Demonstrate transition from discrete to continuous
+show_discrete_to_continuous <- function() {
+  set.seed(123)
+
+  # Parameters
+  v <- 0.2
+  s <- 0.1
+  total_time <- 2
+
+  # Different time step sizes
+  dt_values <- c(0.2, 0.05, 0.01, 0.001)
+
+  plots_list <- list()
+
+  for (i in seq_along(dt_values)) {
+    dt <- dt_values[i]
+    steps <- seq(0, total_time, by = dt)
+    n_steps <- length(steps)
+
+    # Simulate path
+    increments <- rnorm(n_steps - 1, mean = v * dt, sd = s * sqrt(dt))
+    evidence <- c(0.5, 0.5 + cumsum(increments))
+
+    df <- data.frame(time = steps, evidence = evidence)
+
+    p <- ggplot(df, aes(x = time, y = evidence)) +
+      geom_line(color = "darkblue", size = 0.5) +
+      geom_point(color = "darkblue", size = 1) +
+      labs(title = sprintf("dt = %.3f (%.0f steps)", dt, n_steps),
+           x = "Time", y = "Evidence") +
+      ylim(0, 1.2) +
+      theme_minimal()
+
+    plots_list[[i]] <- p
+  }
+
+  gridExtra::grid.arrange(grobs = plots_list, ncol = 2,
+                          top = "From Discrete Steps to Continuous Process")
+}
+
+# Function to simulate and visualize DDM components
+demonstrate_ddm_components <- function(v = 0.3, s = 0.1, n_paths = 5,
+                                       a = 0.5, z = 0.25, dt = 0.001, max_time = 3) {
+
+  # Simulate multiple paths
+  paths_list <- list()
+
+  for (i in 1:n_paths) {
+    time_steps <- seq(0, max_time, by = dt)
+    n_steps <- length(time_steps)
+
+    # Generate the systematic component
+    systematic <- z + v * time_steps
+
+    # Generate the noise component
+    noise_increments <- rnorm(n_steps - 1, mean = 0, sd = s * sqrt(dt))
+    noise <- c(0, cumsum(noise_increments))
+
+    # Combined path
+    evidence <- systematic + noise
+
+    # Find first passage time
+    hit_upper <- which(evidence >= a)[1]
+    hit_lower <- which(evidence <= 0)[1]
+
+    if (!is.na(hit_upper) && (is.na(hit_lower) || hit_upper < hit_lower)) {
+      end_idx <- hit_upper
+      outcome <- "upper"
+    } else if (!is.na(hit_lower)) {
+      end_idx <- hit_lower
+      outcome <- "lower"
+    } else {
+      end_idx <- n_steps
+      outcome <- "none"
+    }
+
+    paths_list[[i]] <- data.frame(
+      time = time_steps[1:end_idx],
+      systematic = systematic[1:end_idx],
+      noise = noise[1:end_idx],
+      evidence = evidence[1:end_idx],
+      path_id = i,
+      outcome = outcome
+    )
+  }
+
+  paths_df <- do.call(rbind, paths_list)
+
+  # Create visualization
+  p1 <- ggplot(paths_df, aes(x = time)) +
+    geom_hline(yintercept = c(0, a), linetype = "dashed", color = "red", size = 1) +
+    geom_hline(yintercept = z, linetype = "dotted", color = "gray50") +
+
+    # Show systematic component for first path
+    geom_line(data = paths_df[paths_df$path_id == 1,],
+              aes(y = systematic), color = "blue", size = 0.8, alpha = 0.7) +
+
+    # Show all evidence paths
+    geom_line(aes(y = evidence, group = path_id, color = outcome),
+              size = 0.8, alpha = 0.8) +
+
+    scale_color_manual(values = c("upper" = "darkgreen", "lower" = "darkorange", "none" = "gray")) +
+
+    annotate("text", x = max_time * 0.1, y = a + 0.1, label = "Upper boundary (a)", hjust = 0) +
+    annotate("text", x = max_time * 0.1, y = -0.1, label = "Lower boundary (0)", hjust = 0) +
+    annotate("text", x = max_time * 0.1, y = z + 0.05, label = "Starting point (z)", hjust = 0) +
+    annotate("text", x = max_time * 0.7, y = z + v * max_time * 0.7,
+             label = "Drift (systematic)", color = "blue", hjust = 0) +
+
+    labs(title = "DDM Components: Drift + Noise = Evidence Paths",
+         subtitle = sprintf("v = %.2f, s = %.2f, a = %.1f, z = %.2f", v, s, a, z),
+         x = "Time (seconds)",
+         y = "Evidence",
+         color = "First boundary hit") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+
+  return(p1)
+}
+
+# Visualize SDE components
+visualize_sde_components <- function() {
+  # Create synthetic data to illustrate components
+  dt <- 0.01
+  time <- seq(0, 2, by = dt)
+  n <- length(time)
+
+  # Drift component: v * dt
+  v <- 0.5
+  drift_component <- v * dt
+  drift_cumulative <- cumsum(rep(drift_component, n-1))
+  drift_cumulative <- c(0, drift_cumulative)
+
+  # Noise component: s * dW_t
+  s <- 0.2
+  noise_increments <- s * sqrt(dt) * rnorm(n-1)
+  noise_cumulative <- c(0, cumsum(noise_increments))
+
+  # Combined
+  combined <- drift_cumulative + noise_cumulative
+
+  # Create data frame
+  df <- data.frame(
+    time = time,
+    drift = drift_cumulative,
+    noise = noise_cumulative,
+    combined = combined
+  )
+
+  df_long <- pivot_longer(df, cols = c(drift, noise, combined),
+                          names_to = "component", values_to = "value")
+
+  ggplot(df_long, aes(x = time, y = value, color = component)) +
+    geom_line(size = 1.2) +
+    scale_color_manual(values = c("drift" = "blue", "noise" = "red", "combined" = "darkgreen"),
+                       labels = c("combined" = "Combined (drift + noise)",
+                                  "drift" = "Drift only (v·t)",
+                                  "noise" = "Noise only (s·W_t)")) +
+    labs(title = "SDE Components: How Drift and Noise Combine",
+         subtitle = sprintf("dX_t = v·dt + s·dW_t, where v = %.1f, s = %.1f", v, s),
+         x = "Time (t)",
+         y = "Evidence (X_t)",
+         color = "Component") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
+
+# Visualize factors affecting choice probability
+explore_choice_probability <- function() {
+  # Create parameter grid
+  v_range <- seq(-0.5, 0.5, by = 0.02)
+  z_range <- seq(0.1, 0.9, by = 0.05)
+
+  # Fixed parameters
+  a <- 1.0
+  s <- 0.5
+
+  # Calculate analytical predictions
+  results <- expand.grid(v = v_range, z_ratio = z_range)
+  results$z <- results$z_ratio * a
+
+  results$p_upper <- mapply(function(v, z) {
+    if (abs(v) < 1e-9) {
+      return(z / a)
+    } else {
+      numerator <- 1 - exp(-2 * v * z / (s^2))
+      denominator <- 1 - exp(-2 * v * a / (s^2))
+      return(numerator / denominator)
+    }
+  }, results$v, results$z)
+
+  # Create heatmap
+  p1 <- ggplot(results, aes(x = v, y = z_ratio, fill = p_upper)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "darkred", mid = "white", high = "darkblue",
+                         midpoint = 0.5, limits = c(0, 1)) +
+    geom_contour(aes(z = p_upper), color = "black", alpha = 0.3) +
+    labs(title = "Analytical Prediction: P(choose upper boundary)",
+         x = "Drift rate (v)",
+         y = "Starting point (z/a)",
+         fill = "P(upper)") +
+    theme_minimal()
+
+  # Cross-sections
+  p2 <- ggplot(results[abs(results$z_ratio - 0.5) < 0.01,],
+               aes(x = v, y = p_upper)) +
+    geom_line(size = 1.5, color = "darkblue") +
+    geom_hline(yintercept = 0.5, linetype = "dashed") +
+    labs(title = "Effect of Drift (at z = a/2)",
+         x = "Drift rate (v)", y = "P(upper)") +
+    theme_minimal()
+
+  p3 <- ggplot(results[abs(results$v) < 0.01,],
+               aes(x = z_ratio, y = p_upper)) +
+    geom_line(size = 1.5, color = "darkgreen") +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    labs(title = "Effect of Starting Point (at v = 0)",
+         x = "Starting point (z/a)", y = "P(upper)") +
+    theme_minimal()
+
+  gridExtra::grid.arrange(p1, p2, p3,
+                          layout_matrix = rbind(c(1, 1), c(2, 3)),
+                          top = "Understanding Choice Probability")
+}
 
 

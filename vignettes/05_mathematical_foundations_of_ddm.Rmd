@@ -40,6 +40,13 @@ At its heart, the DDM describes how evidence ($X_t$) for one of two choices accu
 
 To describe such a continuous process that changes both systematically and randomly, mathematicians use **Stochastic Differential Equations (SDEs)**.
 
+```{r}
+# Demonstrate with positive drift
+demonstrate_ddm_components(v = 0.1, s = 0.2, n_paths = 10)
+```
+
+
+
 ### Understanding "Infinitesimal" and Continuous Change
 
 Before looking at the SDE, let's understand the concept of "infinitesimal." Imagine trying to describe a smooth, curved path:
@@ -48,6 +55,12 @@ Before looking at the SDE, let's understand the concept of "infinitesimal." Imag
 -   You could use many, many very short line segments. This would look much smoother and closer to the true curve.
 
 "Infinitesimal" takes this idea to the extreme: it refers to changes or intervals that are **immeasurably or incalculably small**. By considering these infinitely small steps in time ($dt$) and evidence ($dX_t$), calculus and SDEs can precisely describe processes that unfold continuously and smoothly, even when they involve randomness.
+
+```{r}
+show_discrete_to_continuous()
+```
+
+
 
 ### The DDM as a Stochastic Differential Equation (SDE)
 
@@ -69,6 +82,15 @@ Let's break this down:
     -   $dW_t$ is an **infinitesimal increment of a Wiener process** (also known as Brownian motion). You can think of $dW_t$ as a tiny, random "kick" or "nudge" the evidence receives during $dt$. These kicks are drawn from a Normal distribution with a mean of 0 and a variance equal to $dt$ (so, standard deviation $\sqrt{dt}$). The $s$ parameter scales the size of these random kicks.
 
 So, the equation $dX_t = v \cdot dt + s \cdot dW_t$ means: "In an infinitesimally small moment of time $dt$, the tiny change in evidence $dX_t$ is the sum of a systematic change due to drift ($v \cdot dt$) and a random change due to noise ($s \cdot dW_t$)."
+
+```{r}
+visualize_sde_components()
+```
+
+```{r}
+explore_choice_probability()
+```
+
 
 ### Connecting the SDE to Our Simulations (Euler-Maruyama)
 
@@ -138,29 +160,6 @@ analytical_p_upper <- function(v, a, z, s) {
 }
 ```
 
-```{r}
-v <- seq(-1, 1, 0.001)
-a <- 1
-z <- a/2
-s <- 0.5
-
-numerator <- 1 - exp(-2 * v * z / (s^2))
-denominator <- 1 - exp(-2 * v * a / (s^2))
-rate <- numerator / denominator
-
-df <- tibble(
-  v = v,
-  numerator = numerator,
-  denominator = denominator,
-  rate = rate
-) %>%
-  as.data.frame() %>%
-  pivot_longer(cols = c(numerator, denominator,rate))
-
-ggplot(df %>% filter(name == "rate"), aes(v, value, color = name)) +
-  geom_line() +
-  facet_wrap(~name)
-```
 
 ### Comparing Analytical Solution with Simulation
 
@@ -203,6 +202,88 @@ cat(paste("Simulated P(hit upper boundary 'a') from", n_sim_math_comp, "trials:"
 cat(paste("Absolute difference:", round(abs(p_upper_analytical_val - p_upper_simulated_val), 5)), "\n")
 ```
 
+```{r}
+# Comprehensive comparison of analytical vs simulated
+verify_analytical_solution <- function(n_sims = 1000) {
+  # Test parameters
+  test_params <- expand.grid(
+    v = c(-0.3, -0.1, 0, 0.1, 0.3),
+    z_ratio = c(0.3, 0.5, 0.7)
+  )
+  test_params$a <- 1.0
+  test_params$z <- test_params$z_ratio * test_params$a
+  test_params$s <- 0.5
+  
+  results <- data.frame()
+  
+  for (i in 1:nrow(test_params)) {
+    params <- test_params[i,]
+    
+    # Analytical prediction
+    p_analytical <- analytical_p_upper(params$v, params$a, params$z, params$s)
+    
+    # Simulation
+    sim_data <- simulate_diffusion_experiment(
+      n_trials = n_sims,
+      v = params$v,
+      a = params$a,
+      z = params$z,
+      s = params$s,
+      ter = 0,
+      dt = 0.001,
+      verbose = FALSE
+    )
+    
+    p_simulated <- mean(sim_data$choice == 1, na.rm = TRUE)
+    se_simulated <- sqrt(p_simulated * (1 - p_simulated) / n_sims)
+    
+    results <- rbind(results, data.frame(
+      v = params$v,
+      z_ratio = params$z_ratio,
+      p_analytical = p_analytical,
+      p_simulated = p_simulated,
+      se_simulated = se_simulated,
+      difference = p_simulated - p_analytical
+    ))
+  }
+  
+  # Visualization
+  p1 <- ggplot(results, aes(x = p_analytical, y = p_simulated)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50") +
+    geom_errorbar(aes(ymin = p_simulated - 2*se_simulated, 
+                     ymax = p_simulated + 2*se_simulated), 
+                 width = 0.01, alpha = 0.5) +
+    geom_point(aes(color = factor(v)), size = 3) +
+    scale_color_viridis_d(name = "Drift (v)") +
+    labs(title = sprintf("Analytical vs Simulated Choice Probabilities (n=%d per condition)", n_sims),
+         x = "Analytical P(upper)",
+         y = "Simulated P(upper)") +
+    coord_equal() +
+    theme_minimal()
+  
+  p2 <- ggplot(results, aes(x = interaction(v, z_ratio), y = difference)) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_point(size = 3) +
+    geom_errorbar(aes(ymin = -2*se_simulated, ymax = 2*se_simulated), width = 0.3) +
+    labs(title = "Difference: Simulated - Analytical",
+         x = "Condition (v, z/a)",
+         y = "Difference") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  gridExtra::grid.arrange(p1, p2, ncol = 2)
+  
+  cat("Summary Statistics:\n")
+  cat(sprintf("Mean absolute difference: %.5f\n", mean(abs(results$difference))))
+  cat(sprintf("Max absolute difference: %.5f\n", max(abs(results$difference))))
+  cat(sprintf("All differences within 2 SE: %s\n", 
+              all(abs(results$difference) < 2*results$se_simulated)))
+}
+
+verify_analytical_solution(n_sims = 500)
+```
+
+
 *Observation:* The simulated proportion of choices for the upper boundary should be very close to the analytically derived probability. Any small difference is due to the stochastic nature of the simulation and the finite number of trials. Increasing `n_sim_math_comp` would typically reduce this difference. This comparison provides a good validation for our basic DDM simulation logic.
 
 ### Analytical Solutions for RT Distributions
@@ -224,6 +305,8 @@ Implementing and accurately evaluating such infinite series can be numerically c
 -   **Intuition:** Simulating individual trials (as demonstrated with path visualizations in other vignettes) provides strong intuition about how the model behaves under different parameter configurations.
 
 Our project leverages this power of simulation to understand the DDM, including its more complex variants with parameter variability, which are essential for modeling real-world behavioral data.
+
+
 
 ## Conclusion
 
