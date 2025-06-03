@@ -138,6 +138,30 @@ analytical_p_upper <- function(v, a, z, s) {
 }
 ```
 
+```{r}
+v <- seq(-1, 1, 0.001)
+a <- 1
+z <- a/2
+s <- 0.5
+
+numerator <- 1 - exp(-2 * v * z / (s^2))
+denominator <- 1 - exp(-2 * v * a / (s^2))
+rate <- numerator / denominator
+
+df <- tibble(
+  v = v,
+  numerator = numerator,
+  denominator = denominator,
+  rate = rate
+) %>%
+  as.data.frame() %>%
+  pivot_longer(cols = c(numerator, denominator,rate))
+
+ggplot(df %>% filter(name == "rate"), aes(v, value, color = name)) +
+  geom_line() +
+  facet_wrap(~name)
+```
+
 ### Comparing Analytical Solution with Simulation
 
 Let's pick a set of parameters and see how our simulation results for P(choice=1) compare to the analytical solution.

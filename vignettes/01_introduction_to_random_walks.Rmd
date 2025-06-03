@@ -503,10 +503,3 @@ This vignette introduced the fundamental concepts of random walks and their impl
 ### **Connection to Cognitive Science:**
 
 Random walks provide the foundation for understanding: - **Evidence accumulation** in perceptual decisions - **Response time** distributions in choice tasks - **Confidence** and decision certainty - **Individual differences** in decision-making strategies
-
-### **Next Steps:**
-
-In subsequent vignettes, we'll explore: - **Continuous-time diffusion models** (DDM) - **Parameter estimation** from behavioral data - **Model comparison** and validation techniques\
-- **Advanced DDM variants** with additional parameters
-
-The random walk model serves as an excellent stepping stone to understanding more sophisticated models of human decision-making while providing intuitive insights into the cognitive processes underlying choice behavior.
