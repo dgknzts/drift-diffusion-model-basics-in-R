@@ -7,8 +7,11 @@ date: "2025-05-16"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Understanding Parameter Variability in the DDM}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup_variability, include=FALSE}
@@ -39,51 +42,69 @@ theme_set(theme_minimal(base_size = 12))
 
 ## Introduction: Why Parameter Variability Matters
 
-In the basic DDM introduced in the previous vignette, we assumed that core parameters like drift rate (*v*), starting point (*z*), and non-decision time (*ter*) remain constant across all trials within an experimental condition. While this simplification is useful for understanding the model's basic mechanics, it's **unrealistic** for modeling actual human behavior.
+In the basic DDM introduced in the previous vignette, we assumed that
+core parameters like drift rate (*v*), starting point (*z*), and
+non-decision time (*ter*) remain constant across all trials within an
+experimental condition. While this simplification is useful for
+understanding the model's basic mechanics, it's **unrealistic** for
+modeling actual human behavior.
 
 ### The Problem with Fixed Parameters
 
 Consider what happens in a real experiment:
 
-- **Attention fluctuates**: Your focus isn't identical on trial 1 versus trial 500
-- **Stimulus quality varies**: Even "identical" stimuli have subtle differences  
-- **Processing efficiency changes**: You might get tired, distracted, or more practiced
-- **Strategic adjustments occur**: You might become more or less cautious over time
+-   **Attention fluctuates**: Your focus isn't identical on trial 1
+    versus trial 500
+-   **Stimulus quality varies**: Even "identical" stimuli have subtle
+    differences\
+-   **Processing efficiency changes**: You might get tired, distracted,
+    or more practiced
+-   **Strategic adjustments occur**: You might become more or less
+    cautious over time
 
-These natural fluctuations mean that the "true" parameter values vary from trial to trial, even within the same experimental condition.
+These natural fluctuations mean that the "true" parameter values vary
+from trial to trial, even within the same experimental condition.
 
 ### The Solution: Across-Trial Parameter Variability
 
-The **extended DDM** incorporates this reality by allowing key parameters to vary across trials according to specified distributions. This produces several important benefits:
+The **extended DDM** incorporates this reality by allowing key
+parameters to vary across trials according to specified distributions.
+This produces several important benefits:
 
-1. **More realistic RT distributions**: Captures the full shape of empirical RT data
-2. **Better error patterns**: Explains when errors are fast vs. slow  
-3. **Improved model fit**: Accounts for variability that fixed-parameter models miss
-4. **Richer theoretical insights**: Separates different sources of behavioral variation
+1.  **More realistic RT distributions**: Captures the full shape of
+    empirical RT data
+2.  **Better error patterns**: Explains when errors are fast vs. slow\
+3.  **Improved model fit**: Accounts for variability that
+    fixed-parameter models miss
+4.  **Richer theoretical insights**: Separates different sources of
+    behavioral variation
 
 ## The Mathematics of Parameter Variability
 
 ### Core Idea: Parameters as Random Variables
 
-Instead of fixed values, parameters become **random variables** drawn from distributions:
+Instead of fixed values, parameters become **random variables** drawn
+from distributions:
 
-- **Drift rate**: $v_{trial} \sim \mathcal{N}(\mu_v, \sigma_v^2)$
-- **Starting point**: $z_{trial} \sim \mathcal{U}(\mu_z - \frac{s_z}{2}, \mu_z + \frac{s_z}{2})$  
-- **Non-decision time**: $ter_{trial} \sim \mathcal{U}(\mu_{ter} - \frac{s_{ter}}{2}, \mu_{ter} + \frac{s_{ter}}{2})$
+-   **Drift rate**: $v_{trial} \sim \mathcal{N}(\mu_v, \sigma_v^2)$
+-   **Starting point**:
+    $z_{trial} \sim \mathcal{U}(\mu_z - \frac{s_z}{2}, \mu_z + \frac{s_z}{2})$\
+-   **Non-decision time**:
+    $ter_{trial} \sim \mathcal{U}(\mu_{ter} - \frac{s_{ter}}{2}, \mu_{ter} + \frac{s_{ter}}{2})$
 
-Where:
-- $\mu$ parameters are the **means** (what we estimated in the basic DDM)
-- $\sigma_v$ (**sv**) is the **standard deviation** of drift rate variability
-- $s_z$ (**sz**) is the **range** of starting point variability  
+Where: - $\mu$ parameters are the **means** (what we estimated in the
+basic DDM) - $\sigma_v$ (**sv**) is the **standard deviation** of drift
+rate variability - $s_z$ (**sz**) is the **range** of starting point
+variability\
 - $s_{ter}$ (**st0**) is the **range** of non-decision time variability
 
 ### Implementation in Our Simulator
 
 Our `simulate_diffusion_trial_variable()` function implements this by:
 
-1. **Sampling** trial-specific parameters from their distributions
-2. **Running** the evidence accumulation with those values
-3. **Recording** both the outcome and the parameters used
+1.  **Sampling** trial-specific parameters from their distributions
+2.  **Running** the evidence accumulation with those values
+3.  **Recording** both the outcome and the parameters used
 
 Let's see this in action!
 
@@ -91,7 +112,8 @@ Let's see this in action!
 
 ### Setting Up the Comparison
 
-We'll start by comparing a basic DDM (fixed parameters) with a variable DDM using the same mean parameter values.
+We'll start by comparing a basic DDM (fixed parameters) with a variable
+DDM using the same mean parameter values.
 
 ```{r setup_comparison}
 # Shared simulation parameters
@@ -100,7 +122,7 @@ base_params <- list(
   mean_v = 0.15,    # Moderate positive drift
   a = 0.7,          # Reasonable threshold
   mean_z = 0.35,     # Unbiased start (a/2)
-  s = 0.3,         # Standard within-trial noise
+  s = 0.2,         # Standard within-trial noise
   mean_ter = 0.08,  # Typical non-decision time
   dt = 0.001        # Fine time resolution
 )
@@ -110,24 +132,24 @@ fixed_params <- c(base_params, list(sv = 0, sz = 0, st0 = 0))
 
 # Variable DDM parameters (realistic variability)
 variable_params <- c(base_params, list(
-  sv = 0.2,   # Moderate drift rate variability
+  sv = 0.3,   # Moderate drift rate variability
   sz = 0.1,   # Some starting point variability  
   st0 = 0.04   # Small non-decision time variability
 ))
 
-cat("Simulating Fixed DDM (sv = sz = st0 = 0)...")
+
 set.seed(123)
 data_fixed <- do.call(simulate_diffusion_experiment_variable, 
                      c(list(n_trials = n_trials), fixed_params))
 data_fixed$model_type <- "Fixed Parameters"
 
-cat("\nSimulating Variable DDM (sv = 0.12, sz = 0.08, st0 = 0.04)...")
+
 set.seed(123) # Same seed for fair comparison
 data_variable <- do.call(simulate_diffusion_experiment_variable,
                         c(list(n_trials = n_trials), variable_params))
 data_variable$model_type <- "Variable Parameters"
 
-cat("\nSimulations complete!")
+
 ```
 
 ### Visualizing the Dramatic Difference
@@ -186,30 +208,36 @@ knitr::kable(summary_stats,
 
 ### Key Observations
 
-**Shape Transformation**: Parameter variability changes the RT distribution shape:
+**Shape Transformation**: Parameter variability changes the RT
+distribution shape:
 
-- **Fixed model**: Symmetric, narrow distributions
-- **Variable model**: Right-skewed, wider distributions (more realistic!)
+-   **Fixed model**: Symmetric, narrow distributions
+-   **Variable model**: Right-skewed, wider distributions (more
+    realistic!)
 
-**Skewness**: The variable model produces the **positive skew** universally observed in real RT data, while the fixed model does not.
+**Skewness**: The variable model produces the **positive skew**
+universally observed in real RT data, while the fixed model does not.
 
-**Variability**: Real decisions show much more RT variability than fixed-parameter models predict.
+**Variability**: Real decisions show much more RT variability than
+fixed-parameter models predict.
 
 ## Part 2: Understanding Each Variability Component
 
-Now let's systematically examine how each type of parameter variability affects the model's predictions.
+Now let's systematically examine how each type of parameter variability
+affects the model's predictions.
 
 ### 2.1 Drift Rate Variability (sv): The Skewness Creator
 
-Drift rate variability is often the **most important** variability parameter because it:
-- Creates realistic right-skewed RT distributions
-- Explains the relationship between correct and error RTs
-- Accounts for trial-to-trial fluctuations in attention and processing
+Drift rate variability is often the **most important** variability
+parameter because it: - Creates realistic right-skewed RT
+distributions - Explains the relationship between correct and error
+RTs - Accounts for trial-to-trial fluctuations in attention and
+processing
 
 ```{r drift_variability_analysis, fig.height=10}
 # Parameters for drift rate variability exploration
-sv_values <- c(0, 0.08, 0.16, 0.24)
-n_trials_sv <- 2000
+sv_values <- c(0, 0.1, 0.25, 0.5)
+n_trials_sv <- 1000
 
 # Simulate across different sv values
 sv_data_list <- list()
@@ -272,20 +300,22 @@ knitr::kable(sv_skewness, caption = "Skewness by sv Value")
 
 **Key Insights about Drift Rate Variability:**
 
-1. **Skewness increases with sv**: Higher values create more pronounced right tails
-2. **Both responses affected**: sv influences the shape of both correct and error RT distributions  
-3. **Realistic distributions**: sv ≥ 0.1 produces distributions similar to real data
+1.  **Skewness increases with sv**: Higher values create more pronounced
+    right tails
+2.  **Both responses affected**: sv influences the shape of both correct
+    and error RT distributions\
+3.  **Realistic distributions**: sv ≥ 0.1 produces distributions similar
+    to real data
 
 ### 2.2 Starting Point Variability (sz): The Fast Error Generator
 
-Starting point variability primarily affects:
-- The probability of fast errors (when you start close to the wrong boundary)
-- Overall RT variance (but less dramatically than sv)
-- Response bias patterns
+Starting point variability primarily affects: - The probability of fast
+errors (when you start close to the wrong boundary) - Overall RT
+variance (but less dramatically than sv) - Response bias patterns
 
 ```{r starting_point_variability, fig.height=8}
-sz_values <- c(0, 0.05, 0.10, 0.15)
-n_trials_sz <- 2000
+sz_values <- c(0, 0.1, 0.25, 0.4)
+n_trials_sz <- 1000
 
 # Simulate across different sz values  
 sz_data_list <- list()
@@ -293,7 +323,7 @@ for (i in seq_along(sz_values)) {
   sz_val <- sz_values[i]
   set.seed(300 + i)
   
-  params_sz <- c(base_params, list(sv = 0.1, sz = sz_val, st0 = 0))
+  params_sz <- c(base_params, list(sv = 0.2, sz = sz_val, st0 = 0))
   data_sz <- do.call(simulate_diffusion_experiment_variable,
                     c(list(n_trials = n_trials_sz), params_sz))
   
@@ -349,10 +379,9 @@ knitr::kable(fast_errors_analysis,
 
 ### 2.3 Non-Decision Time Variability (st0): The Leading Edge Smoother
 
-Non-decision time variability has a distinctive effect:
-- "Smears out" the leading edge of RT distributions
-- Makes the fastest responses more variable
-- Has relatively subtle effects compared to sv and sz
+Non-decision time variability has a distinctive effect: - "Smears out"
+the leading edge of RT distributions - Makes the fastest responses more
+variable - Has relatively subtle effects compared to sv and sz
 
 ```{r nondecision_time_variability, fig.height=8}
 st0_values <- c(0, 0.02, 0.04, 0.06)
@@ -420,7 +449,9 @@ knitr::kable(leading_edge_stats,
 
 ### Putting It All Together
 
-Real behavior reflects the combined influence of all variability sources. Let's simulate a "realistic" DDM with all three types of variability:
+Real behavior reflects the combined influence of all variability
+sources. Let's simulate a "realistic" DDM with all three types of
+variability:
 
 ```{r realistic_ddm_simulation, fig.height=10}
 # Realistic parameter set
@@ -507,16 +538,21 @@ knitr::kable(model_comparison,
 
 The realistic DDM captures several key features of real human RT data:
 
-1. **Right-skewed distributions**: Long right tails for both correct and error responses
-2. **Appropriate variability**: RT standard deviations that match empirical data
-3. **Realistic leading edge**: Smoothed fastest responses, not sharp cutoffs
-4. **Error patterns**: Mix of fast and slow errors, depending on trial-specific parameters
+1.  **Right-skewed distributions**: Long right tails for both correct
+    and error responses
+2.  **Appropriate variability**: RT standard deviations that match
+    empirical data
+3.  **Realistic leading edge**: Smoothed fastest responses, not sharp
+    cutoffs
+4.  **Error patterns**: Mix of fast and slow errors, depending on
+    trial-specific parameters
 
 ## Part 4: Understanding Trial-by-Trial Parameter Variation
 
 ### Examining the Sampled Parameters
 
-Let's look at the actual parameter values sampled on each trial to understand the variability process:
+Let's look at the actual parameter values sampled on each trial to
+understand the variability process:
 
 ```{r trial_by_trial_analysis, fig.height=8}
 # Use the realistic simulation data which includes trial-specific parameters
@@ -608,29 +644,29 @@ print(p_relationships)
 
 **Key Relationships:**
 
-- **Drift rate (v)**: Higher values → faster RTs (stronger evidence accumulation)
-- **Starting point (z)**: Variable effects depending on choice direction
-- **Non-decision time (ter)**: Direct additive effect on total RT
+-   **Drift rate (v)**: Higher values → faster RTs (stronger evidence
+    accumulation)
+-   **Starting point (z)**: Variable effects depending on choice
+    direction
+-   **Non-decision time (ter)**: Direct additive effect on total RT
 
 ## Part 5: Practical Implications and Guidelines
 
 ### When to Include Parameter Variability
 
-**Always include** parameter variability when:
-- You want realistic RT distributions that match human data
-- You're fitting the DDM to empirical data
-- You need to explain error RT patterns (fast vs. slow errors)
-- You have sufficient data (>1000 trials per condition)
+**Always include** parameter variability when: - You want realistic RT
+distributions that match human data - You're fitting the DDM to
+empirical data - You need to explain error RT patterns (fast vs. slow
+errors) - You have sufficient data (\>1000 trials per condition)
 
-**Consider simplified models** when:
-- Teaching basic DDM concepts
-- You have very limited data (<200 trials)
-- Computational efficiency is critical
-- You're doing theoretical explorations
+**Consider simplified models** when: - Teaching basic DDM concepts - You
+have very limited data (\<200 trials) - Computational efficiency is
+critical - You're doing theoretical explorations
 
 ### Typical Parameter Values
 
-Based on empirical DDM studies, typical variability parameter ranges are:
+Based on empirical DDM studies, typical variability parameter ranges
+are:
 
 ```{r parameter_guidelines, echo=FALSE}
 guidelines <- data.frame(
@@ -650,28 +686,39 @@ knitr::kable(guidelines, caption = "Parameter Variability Guidelines")
 
 ### Model Selection Strategy
 
-1. **Start simple**: Begin with fixed parameters to understand basic effects
-2. **Add variability**: Include sv first (biggest impact), then sz and st0
-3. **Compare models**: Use model comparison criteria (AIC, BIC) to justify complexity
-4. **Validate**: Ensure parameter estimates are reasonable and stable
+1.  **Start simple**: Begin with fixed parameters to understand basic
+    effects
+2.  **Add variability**: Include sv first (biggest impact), then sz and
+    st0
+3.  **Compare models**: Use model comparison criteria (AIC, BIC) to
+    justify complexity
+4.  **Validate**: Ensure parameter estimates are reasonable and stable
 
 ## Summary: The Power of Parameter Variability
 
-Parameter variability transforms the DDM from a theoretical tool into a realistic model of human decision-making. The key insights are:
+Parameter variability transforms the DDM from a theoretical tool into a
+realistic model of human decision-making. The key insights are:
 
 ### Theoretical Insights
-- **sv** (drift variability) is the primary driver of realistic RT distribution shapes
-- **sz** (starting point variability) explains fast error patterns
-- **st0** (non-decision time variability) accounts for motor and encoding fluctuations
-- Combined effects create distributions that closely match human data
 
-### Practical Implications  
-- Parameter variability is essential for fitting real data
-- Different variability sources have distinct signatures
-- Model complexity should match data quantity and research goals
-- Understanding variability helps interpret individual differences
+-   **sv** (drift variability) is the primary driver of realistic RT
+    distribution shapes
+-   **sz** (starting point variability) explains fast error patterns
+-   **st0** (non-decision time variability) accounts for motor and
+    encoding fluctuations
+-   Combined effects create distributions that closely match human data
+
+### Practical Implications
+
+-   Parameter variability is essential for fitting real data
+-   Different variability sources have distinct signatures
+-   Model complexity should match data quantity and research goals
+-   Understanding variability helps interpret individual differences
 
 ### Conclusion
 
-Across-trial parameter variability is a critical extension to the basic DDM. By allowing drift rate, starting point, and non-decision time to fluctuate from trial to trial, the model can more accurately capture the richness and complexity of human decision-making behavior, particularly the full shape of RT distributions and the patterns of error responses.
-
+Across-trial parameter variability is a critical extension to the basic
+DDM. By allowing drift rate, starting point, and non-decision time to
+fluctuate from trial to trial, the model can more accurately capture the
+richness and complexity of human decision-making behavior, particularly
+the full shape of RT distributions and the patterns of error responses.
