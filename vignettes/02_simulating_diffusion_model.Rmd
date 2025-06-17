@@ -29,6 +29,7 @@ library(gridExtra) # For arranging plots
 # Source the functions from your DDM R script
 source("../R/02_ddm_simulator_basic.R")
 source("../R/utils/plot_basic_ddm_path_rt.R")
+source("../R/utils/plot_parameter_effects.R")
 ```
 
 ## Introduction to the Diffusion Decision Model (DDM)
@@ -174,7 +175,7 @@ drift_results <- data.frame()
 for(v in drift_rates) {
   sim_data <- simulate_diffusion_experiment(
     n_trials = n_trials_per_condition,
-    v = v, a = 1.0, z = 0.5, s = 0.1, ter = 0.2
+    v = v, a = 0.7, z = 0.35, s = 0.2, ter = 0.1
   )
   sim_data$drift_rate <- v
   drift_results <- rbind(drift_results, sim_data)
@@ -219,13 +220,13 @@ grid.arrange(p1, p2, ncol = 1)
 
 ```{r threshold_effects}
 set.seed(1002)
-thresholds <- c(0.8, 1.0, 1.2, 1.4, 1.6)
+thresholds <- c(0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6)
 
 threshold_results <- data.frame()
 for(a in thresholds) {
   sim_data <- simulate_diffusion_experiment(
     n_trials = n_trials_per_condition,
-    v = 0.15, a = a, z = a/2, s = 0.1, ter = 0.2  # Keep z proportional to a
+    v = 0.15, a = a, z = a/2, s = 0.25, ter = 0.1  # Keep z proportional to a
   )
   sim_data$threshold <- a
   threshold_results <- rbind(threshold_results, sim_data)
@@ -668,67 +669,6 @@ ggplot(rt_quantiles, aes(x = quantile_num, y = rt, color = factor(choice))) +
        x = "Quantile", y = "RT (s)",
        subtitle = "Shows the characteristic DDM pattern: faster responses for correct choices") +
   theme_minimal()
-```
-
-### Advanced Analysis: QQ Plots for Distribution Assessment
-
-```{r qq_plots, fig.height=5}
-# Create QQ plots to assess RT distribution characteristics
-qq_plot <- plot_rt_qq(focus_condition, reference_dist = "lognormal", split_by_choice = TRUE)
-print(qq_plot)
-```
-
-**Interpretation**: The QQ plots help assess whether our simulated RT distributions follow expected patterns. Deviations from the reference line indicate departures from the theoretical distribution.
-
-## Using Enhanced Utility Functions
-
-### Comprehensive Parameter Analysis
-
-Our package now includes functions for systematic parameter exploration:
-
-```{r systematic_parameter_analysis, eval=FALSE}
-# Create a smaller parameter grid for demonstration
-demo_grid <- create_parameter_grid(
-  v_values = c(0.1, 0.2, 0.3),
-  a_values = c(0.8, 1.2),
-  z_values = 0.5  # Keep starting point constant
-)
-
-# Analyze parameter effects (not run due to computation time in vignette)
-param_effects <- plot_parameter_effects(
-   demo_grid, 
-   n_trials_per_condition = 200,
-   plot_type = "separate"
- )
- 
-# Display the plots
- print(param_effects$accuracy)
- print(param_effects$rt)
-```
-
-### Summary Statistics Made Easy
-
-The `summarize_ddm_data()` function provides comprehensive statistics:
-
-```{r comprehensive_summary}
-# Get detailed summary statistics
-detailed_summary <- summarize_ddm_data(ddm_data, correct_response = 1)
-
-cat("=== DDM Simulation Summary ===\n")
-cat("Total trials:", detailed_summary$n_trials, "\n")
-cat("Valid trials:", detailed_summary$n_valid, "\n")
-cat("Timeout rate:", round(detailed_summary$timeout_rate * 100, 2), "%\n")
-cat("Overall accuracy:", round(detailed_summary$accuracy, 3), "\n")
-
-cat("\n=== RT Statistics (All Valid Trials) ===\n")
-rt_stats <- detailed_summary$rt_overall
-cat("Mean RT:", round(rt_stats$mean, 3), "s\n")
-cat("Median RT:", round(rt_stats$median, 3), "s\n")
-cat("RT SD:", round(rt_stats$sd, 3), "s\n")
-cat("RT Skewness:", round(rt_stats$skewness, 3), "\n")
-
-cat("\n=== Choice Proportions ===\n")
-print(detailed_summary$choice_proportions)
 ```
 
 ## Extensions and Advanced Topics

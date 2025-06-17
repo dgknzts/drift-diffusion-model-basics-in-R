@@ -1,8 +1,8 @@
 # R/utils/plot_parameter_effects.R
 
-#' Create Enhanced Parameter Comparison Plots
+#' Create Parameter Effect Plots
 #'
-#' This function creates comprehensive visualizations comparing DDM outputs
+#' This function creates visualizations comparing DDM outputs
 #' across different parameter values or conditions.
 #'
 #' @param data_list List of data frames from DDM simulations
@@ -96,75 +96,9 @@ create_comprehensive_plot <- function(data, param_name, rt_xlim, color_palette) 
     ) +
     ggplot2::theme_minimal()
 
-  # 3. Mean RTs by choice
-  rt_summary <- data %>%
-    dplyr::group_by(param_value, param_label, choice) %>%
-    dplyr::summarise(
-      mean_rt = mean(rt),
-      median_rt = median(rt),
-      .groups = 'drop'
-    ) %>%
-    dplyr::mutate(
-      response_type = ifelse(choice == 1, "Upper", "Lower")
-    )
-
-  p3 <- ggplot2::ggplot(rt_summary,
-                        ggplot2::aes(x = param_value, y = mean_rt,
-                                     color = response_type)) +
-    ggplot2::geom_line(size = 2) +
-    ggplot2::geom_point(size = 4) +
-    ggplot2::scale_color_manual(
-      values = c("Upper" = "steelblue", "Lower" = "coral")
-    ) +
-    ggplot2::labs(
-      title = "Mean RT by Response",
-      x = param_name,
-      y = "Mean RT (s)",
-      color = "Response"
-    ) +
-    ggplot2::theme_minimal()
-
-  # 4. RT quantiles
-  quantile_summary <- data %>%
-    dplyr::group_by(param_value, param_label) %>%
-    dplyr::summarise(
-      q10 = quantile(rt, 0.1),
-      q25 = quantile(rt, 0.25),
-      q50 = quantile(rt, 0.5),
-      q75 = quantile(rt, 0.75),
-      q90 = quantile(rt, 0.9),
-      .groups = 'drop'
-    )
-
-  p4 <- quantile_summary %>%
-    tidyr::pivot_longer(
-      cols = dplyr::starts_with("q"),
-      names_to = "quantile",
-      values_to = "rt"
-    ) %>%
-    dplyr::mutate(
-      quantile_label = factor(
-        quantile,
-        levels = c("q10", "q25", "q50", "q75", "q90"),
-        labels = c("10%", "25%", "50%", "75%", "90%")
-      )
-    ) %>%
-    ggplot2::ggplot(ggplot2::aes(x = param_value, y = rt,
-                                 color = quantile_label)) +
-    ggplot2::geom_line(size = 1.5) +
-    ggplot2::geom_point(size = 3) +
-    ggplot2::scale_color_viridis_d(option = color_palette) +
-    ggplot2::labs(
-      title = "RT Quantiles",
-      x = param_name,
-      y = "RT (s)",
-      color = "Quantile"
-    ) +
-    ggplot2::theme_minimal()
-
   # Combine plots
   if (requireNamespace("patchwork", quietly = TRUE)) {
-    return((p1 + p2) / (p3 + p4) +
+    return(p1 + p2 +
              patchwork::plot_annotation(
                title = paste("Effects of", param_name, "on DDM Behavior"),
                theme = ggplot2::theme(
