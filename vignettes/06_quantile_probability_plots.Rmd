@@ -177,16 +177,16 @@ The real power of QPPs often comes when comparing multiple experimental conditio
 # Re-using qpp_base_params from the previous vignette (or define similar ones)
 # Ensure it has sv, sz, st0 defined as our plot_qpp calls simulate_diffusion_experiment_variable
 qpp_multi_cond_base_params <- list(
-  a = 0.7,
-  mean_z = 0.35, # Unbiased
-  s = 0.2,      # Lower s for clearer v effect
+  a = 0.6,
+  mean_z = 0.3, # Unbiased
+  s = 0.25,      # Lower s for clearer v effect
   mean_ter = 0.2,
-  sv = 0.2,     # Moderate sv
+  sv = 0.25,     # Moderate sv
   sz = 0.1,     # Moderate sz
   st0 = 0.05,   # Moderate st0
   dt = 0.001
 )
-n_trials_qpp_multi <- 300 # Good number of trials per condition
+n_trials_qpp_multi <- 500 # Good number of trials per condition
 
 # Condition 1: Low drift rate (hard task)
 set.seed(801)
@@ -201,13 +201,13 @@ data_v_medium_multi <- do.call(simulate_diffusion_experiment_variable,
 # Condition 3: High drift rate (easy task)
 set.seed(803)
 data_v_high_multi <- do.call(simulate_diffusion_experiment_variable,
-                        c(list(n_trials = n_trials_qpp_multi, mean_v = 0.25), qpp_multi_cond_base_params))
+                        c(list(n_trials = n_trials_qpp_multi, mean_v = 0.3), qpp_multi_cond_base_params))
 
 # Create a named list for the plotting function
 qpp_multi_data_list <- list(
   "Hard (v=0.05)" = data_v_low_multi,
   "Medium (v=0.15)" = data_v_medium_multi,
-  "Easy (v=0.25)" = data_v_high_multi
+  "Easy (v=0.3)" = data_v_high_multi
 )
 ```
 
@@ -223,7 +223,7 @@ multi_condition_qpp_plot <- plot_qpp(
   num_quantiles_fill = 5, # e.g., Quintiles
   ridge_scale = 0.7,      # Adjust for visual appearance with multiple facets
   alpha_quantile_fill = 0.65,
-  rt_lim = c(0.2, 2.0),     # Set a common RT limit for comparison, adjust as needed
+  rt_lim = c(0.1, 3.0),     # Set a common RT limit for comparison, adjust as needed
   show_median_line = TRUE,
   median_line_color = "black",
   condition_numbers = FALSE, # Use names from data_list

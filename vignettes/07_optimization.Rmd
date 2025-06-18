@@ -104,7 +104,7 @@ print(round(target_stats_manual_search[c("p_correct", "rt_correct_q50", "rt_erro
 We'll test a sequence of mean_v values. For each, we simulate data, get stats, and calculate the error score (SSD) against the target stats.
 
 ```{r manual_grid_search_mean_v}
-candidate_mean_vs <- seq(0.05, 0.45, by = 0.005) # A range of v values to test
+candidate_mean_vs <- seq(0.05, 0.25, by = 0.005) # A range of v values to test
 n_sim_per_candidate <- 500 # Trials for each candidate simulation (can be lower than target for speed)
 
 search_results <- data.frame(
