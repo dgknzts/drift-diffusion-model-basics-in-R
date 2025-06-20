@@ -1,0 +1,682 @@
+---
+title: "Understanding DDM Optimization Methods: Maximum Likelihood, Chi-Square, and Kolmogorov-Smirnov"
+author: "DDM Tutorial Series"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: united
+    highlight: tango
+    code_folding: show
+    df_print: kable
+vignette: >
+  %\VignetteIndexEntry{DDM Optimization Methods}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  message = FALSE, 
+  warning = FALSE, 
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(gridExtra)
+
+# Source DDM functions
+source("../R/06_ddm_simulator_main.R")  # Or your simulation file
+source("../R/07_ddm_fitting_functions.R")  # The fitting functions
+```
+
+## Introduction: The Challenge of Finding the Right Parameters
+
+Imagine you're a detective trying to solve a case. You have evidence
+(behavioral data: choices and reaction times), and you need to figure
+out what happened (the cognitive processes). In DDM fitting, we're
+trying to find the parameter values that most likely produced the
+observed data.
+
+This vignette will guide you through three different methods for solving
+this puzzle: 1. **Maximum Likelihood (ML)** - Like finding the most
+probable suspect 2. **Chi-Square (CS)** - Like matching fingerprint
+patterns 3. **Kolmogorov-Smirnov (KS)** - Like comparing overall crime
+scene profiles
+
+## What is Optimization?
+
+Before diving into specific methods, let's understand what optimization
+means in our context.
+
+### The Optimization Landscape
+
+Think of optimization as hiking in a valley, trying to find the lowest
+point. Each location represents a set of DDM parameters, and the
+elevation represents how poorly those parameters fit the data.
+
+```{r optimization_landscape_viz, fig.height=6}
+# Create a simple 2D optimization landscape visualization
+create_landscape <- function() {
+  v_vals <- seq(-0.5, 0.5, length.out = 50)
+  a_vals <- seq(0.5, 2, length.out = 50)
+  
+  landscape <- expand.grid(v = v_vals, a = a_vals)
+  
+  # Create a simple error surface with a minimum
+  true_v <- 0.15
+  true_a <- 0.9
+  
+  landscape$error <- with(landscape, 
+    (v - true_v)^2 * 10 + (a - true_a)^2 * 5 + 
+    0.5 * sin(v * 10) * sin(a * 5) # Add some noise/local minima
+  )
+  
+  ggplot(landscape, aes(x = v, y = a, z = error)) +
+    geom_contour_filled(aes(fill = after_stat(level))) +
+    geom_point(x = true_v, y = true_a, color = "red", size = 4, shape = 4, stroke = 2) +
+    geom_point(x = 0.1, y = 1.5, color = "white", size = 3, shape = 16) +
+    geom_segment(aes(x = 0.1, y = 1.5, xend = true_v, yend = true_a),
+                 arrow = arrow(length = unit(0.3, "cm")),
+                 color = "white", size = 1.2, linetype = "dashed") +
+    scale_fill_viridis_d(name = "Error\n(Higher = Worse)") +
+    labs(
+      x = "Drift Rate (v)",
+      y = "Threshold (a)",
+      title = "Optimization Landscape",
+      subtitle = "White dot: Starting point | Red X: True minimum | Arrow: Optimization path"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "right")
+}
+
+create_landscape()
+```
+
+The optimization algorithm starts at some initial guess (white dot) and
+tries to find its way to the lowest point (red X) by evaluating the
+error at different locations.
+
+## Method 1: Maximum Likelihood (ML)
+
+### The Intuition
+
+Maximum Likelihood asks: "What parameter values make the observed data
+most probable?"
+
+Imagine you're trying to figure out if a coin is fair. If you see 7
+heads and 3 tails, ML would find the coin bias that makes this outcome
+most likely (hint: it's not 50/50!).
+
+### The Mathematics
+
+For each observed response time and choice, we calculate the probability
+density:
+
+$$p(RT_i, choice_i | \theta) = f_{DDM}(RT_i, choice_i | v, a, z, t_{er}, ...)$$
+
+where $f_{DDM}$ is the DDM probability density function and $\theta$
+represents all parameters.
+
+The likelihood of all data is the product of individual densities:
+
+$$L(\theta | data) = \prod_{i=1}^{n} p(RT_i, choice_i | \theta)$$
+
+We typically work with log-likelihood for numerical stability:
+
+$$\log L(\theta | data) = \sum_{i=1}^{n} \log p(RT_i, choice_i | \theta)$$
+
+### Example: ML in Action
+
+```{r ml_example, cache=TRUE}
+# Generate synthetic data with known parameters
+set.seed(123)
+true_params <- list(mean_v = 0.2, a = 1.0, mean_z = 0.5, mean_ter = 0.3, d = 0)
+
+data_ml <- simulate_diffusion_experiment(
+  n_trials = 500,
+  mean_v = true_params$mean_v,
+  a = true_params$a,
+  mean_z = true_params$mean_z,
+  mean_ter = true_params$mean_ter,
+  d = true_params$d,
+  sv = 0.1
+)
+
+# Fit using ML
+cat("Fitting DDM using Maximum Likelihood...\n")
+fit_ml <- fit_ddm(
+  data = data_ml,
+  method = "ML",
+  params_to_fit = c("mean_v", "a", "mean_ter"),
+  constrain_z_to_a_div_2 = TRUE,
+  control = list(maxit = 100, trace = 0)
+)
+
+# Display results
+ml_results <- data.frame(
+  Parameter = c("mean_v", "a", "mean_ter"),
+  True = c(true_params$mean_v, true_params$a, true_params$mean_ter),
+  Estimated = fit_ml$par,
+  Error = fit_ml$par - c(true_params$mean_v, true_params$a, true_params$mean_ter)
+)
+
+knitr::kable(ml_results, digits = 3, caption = "ML Parameter Recovery")
+```
+
+### Visualizing ML: Density Matching
+
+ML works by finding parameters that make the predicted probability
+densities match the observed data:
+
+```{r ml_density_viz}
+# Function to plot observed vs predicted densities
+plot_ml_densities <- function(data, fit_params) {
+  # Create bins for visualization
+  rt_bins <- seq(0, 2, by = 0.05)
+  
+  # Observed densities
+  obs_0 <- hist(data$rt[data$choice == 0], breaks = rt_bins, plot = FALSE)
+  obs_1 <- hist(data$rt[data$choice == 1], breaks = rt_bins, plot = FALSE)
+  
+  # Create predicted data
+  pred_data <- simulate_diffusion_experiment(
+    n_trials = 2000,
+    mean_v = fit_params["mean_v"],
+    a = fit_params["a"],
+    mean_z = fit_params["a"]/2,
+    mean_ter = fit_params["mean_ter"],
+    sv = 0.1
+  )
+  
+  pred_0 <- hist(pred_data$rt[pred_data$choice == 0], breaks = rt_bins, plot = FALSE)
+  pred_1 <- hist(pred_data$rt[pred_data$choice == 1], breaks = rt_bins, plot = FALSE)
+  
+  # Combine for plotting
+  density_df <- data.frame(
+    rt = rep(obs_0$mids, 4),
+    density = c(obs_0$density, obs_1$density, pred_0$density, pred_1$density),
+    type = rep(c("Observed", "Observed", "Predicted", "Predicted"), each = length(obs_0$mids)),
+    response = rep(c("Lower", "Upper"), each = length(obs_0$mids), times = 2)
+  )
+  
+  ggplot(density_df, aes(x = rt, y = density, color = type, linetype = response)) +
+    geom_line(size = 1.2) +
+    scale_color_manual(values = c("Observed" = "black", "Predicted" = "red")) +
+    scale_linetype_manual(values = c("Lower" = "dashed", "Upper" = "solid")) +
+    labs(
+      title = "Maximum Likelihood: Matching Probability Densities",
+      x = "Response Time (s)",
+      y = "Density",
+      color = "Data Type",
+      linetype = "Response"
+    ) +
+    theme_minimal() +
+    xlim(0, 1.5)
+}
+
+plot_ml_densities(data_ml, fit_ml$par)
+```
+
+### Advantages and Disadvantages of ML
+
+**Advantages:** - Statistically efficient (uses all information in the
+data) - Works well with small sample sizes - Provides likelihood-based
+fit statistics (AIC, BIC)
+
+**Disadvantages:** - Sensitive to outliers (one fast guess can ruin
+everything!) - Computationally intensive (calculates density for every
+trial) - Can fail if model predicts zero probability for observed data
+
+## Method 2: Chi-Square (CS)
+
+### The Intuition
+
+Chi-Square fitting is like comparing histograms. Instead of looking at
+individual data points, we group RTs into bins and compare the number of
+responses in each bin between observed and predicted data.
+
+Think of it as comparing the shapes of two RT distributions by checking
+if they have similar proportions in different regions.
+
+### The Mathematics
+
+The Chi-Square statistic measures the discrepancy between observed and
+expected frequencies:
+
+$$\chi^2 = \sum_{i=1}^{k} \frac{(O_i - E_i)^2}{E_i}$$
+
+where: - $O_i$ = observed count in bin $i$ - $E_i$ = expected
+(predicted) count in bin $i$ - $k$ = number of bins
+
+For DDM fitting, we use quantile-based bins (0.1, 0.3, 0.5, 0.7, 0.9
+quantiles), creating 6 bins per response type.
+
+### Example: CS in Action
+
+```{r cs_example, cache=TRUE}
+# Use same data as ML example
+cat("Fitting DDM using Chi-Square method...\n")
+fit_cs <- fit_ddm(
+  data = data_ml,
+  method = "CS",
+  params_to_fit = c("mean_v", "a", "mean_ter"),
+  constrain_z_to_a_div_2 = TRUE,
+  n_sim = 2000,
+  control = list(maxit = 100, trace = 0)
+)
+
+# Display results
+cs_results <- data.frame(
+  Parameter = c("mean_v", "a", "mean_ter"),
+  True = c(true_params$mean_v, true_params$a, true_params$mean_ter),
+  ML_Estimate = fit_ml$par,
+  CS_Estimate = fit_cs$par
+)
+
+knitr::kable(cs_results, digits = 3, caption = "ML vs CS Parameter Recovery")
+```
+
+### Visualizing CS: Quantile Matching
+
+CS focuses on matching the quantiles of the RT distributions:
+
+```{r cs_quantile_viz}
+# Function to visualize quantile matching
+plot_cs_quantiles <- function(data, fit_params) {
+  # Calculate observed quantiles
+  quantiles <- c(0.1, 0.3, 0.5, 0.7, 0.9)
+  
+  obs_q0 <- quantile(data$rt[data$choice == 0], probs = quantiles, na.rm = TRUE)
+  obs_q1 <- quantile(data$rt[data$choice == 1], probs = quantiles, na.rm = TRUE)
+  
+  # Generate predicted data
+  pred_data <- simulate_diffusion_experiment(
+    n_trials = 2000,
+    mean_v = fit_params["mean_v"],
+    a = fit_params["a"],
+    mean_z = fit_params["a"]/2,
+    mean_ter = fit_params["mean_ter"],
+    sv = 0.1
+  )
+  
+  pred_q0 <- quantile(pred_data$rt[pred_data$choice == 0], probs = quantiles, na.rm = TRUE)
+  pred_q1 <- quantile(pred_data$rt[pred_data$choice == 1], probs = quantiles, na.rm = TRUE)
+  
+  # Create visualization
+  quantile_df <- data.frame(
+    quantile = rep(quantiles * 100, 4),
+    rt = c(obs_q0, obs_q1, pred_q0, pred_q1),
+    type = rep(c("Observed", "Predicted"), each = length(quantiles) * 2),
+    response = rep(c("Lower", "Upper"), each = length(quantiles), times = 2)
+  )
+  
+  ggplot(quantile_df, aes(x = quantile, y = rt, color = type, shape = response)) +
+    geom_point(size = 4) +
+    geom_line(aes(group = interaction(type, response)), size = 1) +
+    scale_color_manual(values = c("Observed" = "black", "Predicted" = "red")) +
+    labs(
+      title = "Chi-Square: Matching RT Quantiles",
+      x = "Quantile (%)",
+      y = "Response Time (s)",
+      color = "Data Type",
+      shape = "Response"
+    ) +
+    theme_minimal()
+}
+
+plot_cs_quantiles(data_ml, fit_cs$par)
+```
+
+### The Chi-Square Binning Process
+
+```{r cs_binning_viz}
+# Visualize the binning process
+visualize_cs_bins <- function(data) {
+  # Get quantile boundaries for upper threshold responses
+  upper_rts <- data$rt[data$choice == 1]
+  quantiles <- c(0, 0.1, 0.3, 0.5, 0.7, 0.9, 1)
+  boundaries <- quantile(upper_rts, probs = quantiles)
+  
+  # Create histogram with quantile bins
+  hist_data <- hist(upper_rts, breaks = 50, plot = FALSE)
+  
+  df <- data.frame(
+    mid = hist_data$mids,
+    counts = hist_data$counts
+  )
+  
+  ggplot(df, aes(x = mid, y = counts)) +
+    geom_col(fill = "lightblue", color = "black", alpha = 0.7) +
+    geom_vline(xintercept = boundaries[2:6], color = "red", linetype = "dashed", size = 1) +
+    annotate("text", x = (boundaries[1:6] + boundaries[2:7])/2, 
+             y = max(df$counts) * 0.9,
+             label = paste0("Bin ", 1:6),
+             color = "red", fontface = "bold") +
+    labs(
+      title = "Chi-Square Method: Dividing RTs into Quantile-Based Bins",
+      subtitle = "Red lines show 10th, 30th, 50th, 70th, and 90th percentiles",
+      x = "Response Time (s)",
+      y = "Count"
+    ) +
+    theme_minimal()
+}
+
+visualize_cs_bins(data_ml)
+```
+
+### Advantages and Disadvantages of CS
+
+**Advantages:** - Robust to outliers (a few extreme RTs won't affect bin
+counts much) - Fast computation (only need to simulate once and count) -
+Well-established statistical properties
+
+**Disadvantages:** - Requires larger sample sizes (minimum \~200
+trials) - Loses information by binning continuous data - Can fail if too
+few errors (need at least 12 responses per type)
+
+## Method 3: Kolmogorov-Smirnov (KS)
+
+### The Intuition
+
+The KS method compares the overall "shape" of two distributions by
+looking at their cumulative distribution functions (CDFs). It finds the
+maximum vertical distance between the observed and predicted CDFs.
+
+Imagine stacking up all RTs from shortest to longest and comparing the
+resulting curves between observed and predicted data.
+
+### The Mathematics
+
+The KS statistic is:
+
+$$D = \max_t |F_{observed}(t) - F_{predicted}(t)|$$
+
+where $F(t)$ is the cumulative distribution function.
+
+For DDM fitting, we use a clever trick: combine both response
+distributions by making lower threshold RTs negative.
+
+### Example: KS in Action
+
+```{r ks_example, cache=TRUE}
+# Use same data
+cat("Fitting DDM using Kolmogorov-Smirnov method...\n")
+fit_ks <- fit_ddm(
+  data = data_ml,
+  method = "KS",
+  params_to_fit = c("mean_v", "a", "mean_ter"),
+  constrain_z_to_a_div_2 = TRUE,
+  n_sim = 2000,
+  control = list(maxit = 100, trace = 0)
+)
+
+# Compare all three methods
+comparison_results <- data.frame(
+  Parameter = c("mean_v", "a", "mean_ter"),
+  True = c(true_params$mean_v, true_params$a, true_params$mean_ter),
+  ML = fit_ml$par,
+  CS = fit_cs$par,
+  KS = fit_ks$par
+)
+
+knitr::kable(comparison_results, digits = 3, caption = "Comparison of All Three Methods")
+```
+
+### Visualizing KS: CDF Comparison
+
+```{r ks_cdf_viz}
+# Function to visualize KS method
+plot_ks_cdfs <- function(data, fit_params) {
+  # Create combined distributions (negative for lower threshold)
+  obs_combined <- ifelse(data$choice == 0, -data$rt, data$rt)
+  
+  # Generate predicted data
+  pred_data <- simulate_diffusion_experiment(
+    n_trials = 2000,
+    mean_v = fit_params["mean_v"],
+    a = fit_params["a"],
+    mean_z = fit_params["a"]/2,
+    mean_ter = fit_params["mean_ter"],
+    sv = 0.1
+  )
+  
+  pred_combined <- ifelse(pred_data$choice == 0, -pred_data$rt, pred_data$rt)
+  
+  # Calculate CDFs
+  obs_cdf <- ecdf(obs_combined)
+  pred_cdf <- ecdf(pred_combined)
+  
+  # Create points for plotting
+  x_vals <- seq(-2, 2, by = 0.01)
+  
+  cdf_df <- data.frame(
+    x = rep(x_vals, 2),
+    cdf = c(obs_cdf(x_vals), pred_cdf(x_vals)),
+    type = rep(c("Observed", "Predicted"), each = length(x_vals))
+  )
+  
+  # Find maximum distance
+  distances <- abs(obs_cdf(x_vals) - pred_cdf(x_vals))
+  max_dist_idx <- which.max(distances)
+  max_dist_x <- x_vals[max_dist_idx]
+  
+  ggplot(cdf_df, aes(x = x, y = cdf, color = type)) +
+    geom_line(size = 1.2) +
+    geom_segment(x = max_dist_x, 
+                 y = obs_cdf(max_dist_x),
+                 xend = max_dist_x,
+                 yend = pred_cdf(max_dist_x),
+                 color = "red", size = 2) +
+    geom_vline(xintercept = 0, linetype = "dotted", alpha = 0.5) +
+    annotate("text", x = max_dist_x + 0.1, y = (obs_cdf(max_dist_x) + pred_cdf(max_dist_x))/2,
+             label = "Max Distance\n(KS Statistic)",
+             color = "red", fontface = "bold", hjust = 0) +
+    scale_color_manual(values = c("Observed" = "black", "Predicted" = "blue")) +
+    labs(
+      title = "Kolmogorov-Smirnov: Comparing Combined CDFs",
+      subtitle = "Negative RTs = Lower threshold responses | Positive RTs = Upper threshold responses",
+      x = "Combined RT (negative for lower threshold)",
+      y = "Cumulative Probability",
+      color = "Data Type"
+    ) +
+    theme_minimal()
+}
+
+plot_ks_cdfs(data_ml, fit_ks$par)
+```
+
+### Advantages and Disadvantages of KS
+
+**Advantages:** - Good balance between efficiency and robustness - Uses
+the complete distribution (no binning) - Less sensitive to outliers than
+ML
+
+**Disadvantages:** - Statistical properties less well understood than
+CS - Can be less efficient than ML for clean data - The combined
+distribution trick may seem unintuitive
+
+## Choosing the Right Method
+
+### Decision Tree for Method Selection
+
+```{r decision_tree, fig.height=6}
+# Create a simple decision tree visualization
+create_decision_tree <- function() {
+  # This is a text-based representation
+  cat("
+  CHOOSING A DDM FITTING METHOD
+  ==============================
+  
+  Start Here: How many trials do you have?
+  |
+  |-- Less than 100 trials?
+  |   |
+  |   |-- Is your data very clean (no outliers)?
+  |   |   |-- YES: Use ML (most efficient)
+  |   |   |-- NO: Use KS (more robust)
+  |   |
+  |-- 100-500 trials?
+  |   |
+  |   |-- Need fit statistics (AIC/BIC)?
+  |   |   |-- YES: Use ML
+  |   |   |-- NO: Use KS (good balance)
+  |   |
+  |-- More than 500 trials?
+      |
+      |-- Concerned about outliers?
+          |-- YES: Use CS (most robust)
+          |-- NO: Any method works well
+  
+  Special Considerations:
+  - Few errors (<12): Avoid CS
+  - Need likelihood: Use ML
+  - Comparing to classic papers: Use CS (most common historically)
+  ")
+}
+
+create_decision_tree()
+```
+
+### Practical Comparison with Contaminated Data
+
+Let's see how each method handles data with outliers:
+
+```{r contaminated_comparison, cache=TRUE}
+# Generate clean data
+set.seed(456)
+clean_data <- simulate_diffusion_experiment(
+  n_trials = 300,
+  mean_v = 0.2, a = 1.0, mean_z = 0.5, mean_ter = 0.3
+)
+
+# Add contamination (5% fast guesses)
+contaminated_data <- clean_data
+n_contaminate <- floor(nrow(clean_data) * 0.05)
+contaminate_idx <- sample(1:nrow(clean_data), n_contaminate)
+contaminated_data$rt[contaminate_idx] <- runif(n_contaminate, 0.1, 0.2)
+contaminated_data$choice[contaminate_idx] <- sample(0:1, n_contaminate, replace = TRUE)
+
+# Fit with all three methods
+cat("Fitting contaminated data with all methods...\n")
+comparison_contaminated <- compare_fitting_methods(
+  data = contaminated_data,
+  params_to_fit = c("mean_v", "a", "mean_ter"),
+  constrain_z_to_a_div_2 = TRUE,
+  n_sim = 1000,
+  control = list(maxit = 50, trace = 0)
+)
+
+# Display results
+contaminated_results <- data.frame(
+  Parameter = c("mean_v", "a", "mean_ter"),
+  True = c(0.2, 1.0, 0.3),
+  ML_Clean = fit_ml$par,
+  ML_Contam = comparison_contaminated$results$ML$par,
+  CS_Contam = comparison_contaminated$results$CS$par,
+  KS_Contam = comparison_contaminated$results$KS$par
+)
+
+knitr::kable(contaminated_results, digits = 3, 
+             caption = "Method Performance with 5% Contamination")
+```
+
+### Visualizing the Effect of Outliers
+
+```{r outlier_effect_viz}
+# Show the contaminated data
+plot_contamination <- function(clean, contaminated) {
+  df <- data.frame(
+    rt = c(clean$rt, contaminated$rt),
+    type = rep(c("Clean", "Contaminated"), c(nrow(clean), nrow(contaminated))),
+    choice = c(clean$choice, contaminated$choice)
+  )
+  
+  # Find contaminated points
+  contam_idx <- which(contaminated$rt < 0.2)
+  
+  ggplot(df %>% filter(type == "Contaminated"), aes(x = rt, fill = factor(choice))) +
+    geom_histogram(bins = 50, alpha = 0.7, position = "identity") +
+    geom_vline(xintercept = 0.2, color = "red", linetype = "dashed", size = 1) +
+    annotate("text", x = 0.15, y = 20, label = "Contaminants\n(fast guesses)", 
+             color = "red", fontface = "bold") +
+    scale_fill_manual(values = c("0" = "coral", "1" = "skyblue"),
+                      labels = c("Lower", "Upper")) +
+    labs(
+      title = "Contaminated Data: 5% Fast Guesses",
+      subtitle = "These outliers affect ML more than CS or KS",
+      x = "Response Time (s)",
+      y = "Count",
+      fill = "Response"
+    ) +
+    theme_minimal() +
+    xlim(0, 2)
+}
+
+plot_contamination(clean_data, contaminated_data)
+```
+
+## Summary and Recommendations
+
+### Quick Reference Table
+
+| Method | Best For | Worst For | Key Strength | Key Weakness |
+|---------------|---------------|---------------|---------------|---------------|
+| ML | Small, clean datasets | Data with outliers | Statistical efficiency | Outlier sensitivity |
+| CS | Large datasets | Small datasets (\<200 trials) | Robustness | Information loss |
+| KS | Medium datasets | Specific hypothesis tests | Balance of efficiency & robustness | Less established |
+
+### Final Recommendations
+
+1.  **Start with KS** as your default - it's a good all-around method
+2.  **Use ML** when you have clean data and need likelihood-based
+    statistics
+3.  **Use CS** when you have lots of data and worry about outliers
+4.  **Always visualize** your fits to check if they make sense
+5.  **Try multiple methods** when in doubt - if they agree, you can be
+    more confident
+
+### Code for Your Analysis
+
+Here's a template to get started:
+
+```{r analysis_template, eval=FALSE}
+# Load your data
+# data <- read.csv("your_data.csv")
+
+# Quick comparison of all methods
+results <- compare_fitting_methods(
+  data = data,
+  params_to_fit = c("mean_v", "a", "mean_ter"),
+  constrain_z_to_a_div_2 = TRUE,
+  n_sim = 2000
+)
+
+# If results are similar across methods, you can be confident
+# If they differ substantially, investigate why (check for outliers, etc.)
+```
+
+## Conclusion
+
+Each optimization method has its place in the DDM fitting toolkit.
+Understanding their strengths and weaknesses helps you choose the right
+tool for your specific dataset and research question. Remember: the goal
+isn't just to get numbers, but to understand the cognitive processes
+underlying the behavior you're studying.
+
+The beauty of having multiple methods is that they can serve as checks
+on each other. When all three methods converge on similar parameter
+values, you can be confident in your results. When they diverge, it's a
+signal to look more carefully at your data and consider what might be
+driving the differences.

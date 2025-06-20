@@ -109,7 +109,6 @@ ddm_objective_function <- function(params_to_test, # Vector of parameters being 
     current_iter_params[[param_names_optim[i]]] <- params_to_test[i]
   }
 
-  # ---- NEW: Handle mean_z = a/2 constraint ----
   if (constrain_z_to_a_div_2) {
     if (!"a" %in% names(current_iter_params)) {
       stop("If 'constrain_z_to_a_div_2' is TRUE, 'a' must be either a fixed or optimized parameter.")
