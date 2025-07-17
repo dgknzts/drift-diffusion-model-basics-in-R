@@ -26,7 +26,7 @@ library(ggridges)  # For density ridge plots
 
 # Source DDM simulators and the QPP plotting helper
 source("../R/03_ddm_simulator_variable.R") # For variable parameter simulations
-source("../R/utils/plot_quantile_probability.R") # For QPP plotting functions
+source("../R/08_plot_quantile_probability.R") # For QPP plotting functions
 ```
 
 ## Introduction: Beyond Mean RT and Accuracy

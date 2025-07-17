@@ -28,8 +28,8 @@ library(gridExtra) # For arranging plots
 
 # Source the functions from your DDM R script
 source("../R/02_ddm_simulator_basic.R")
-source("../R/utils/plot_basic_ddm_path_rt.R")
-source("../R/utils/plot_parameter_effects.R")
+source("../R/05_plot_basic_ddm_path_rt.R")
+source("../R/07_plot_parameter_effects.R")
 ```
 
 ## Introduction to the Diffusion Decision Model (DDM)

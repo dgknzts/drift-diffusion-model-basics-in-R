@@ -34,7 +34,7 @@ library(scales)
 # Source the DDM simulation functions
 source("../R/02_ddm_simulator_basic.R")    # For standard DDM simulations
 source("../R/03_ddm_simulator_variable.R") # For DDM simulations with variability
-source("../R/utils/plot_parameter_comparison.R")
+source("../R/06_plot_parameter_comparison.R")
 
 # Set consistent theme
 theme_set(theme_minimal(base_size = 12))

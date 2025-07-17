@@ -53,8 +53,8 @@ theme_set(theme_minimal(base_size = 10) +
 
 # Source DDM functions
 source("../R/03_ddm_simulator_variable.R")
-source("../R/utils/plot_parameter_comparison.R")
-source("../R/utils/plot_parameter_effects.R") # New enhanced plotting functions
+source("../R/06_plot_parameter_comparison.R")
+source("../R/07_plot_parameter_effects.R") # New enhanced plotting functions
 ```
 
 ## Learning Objectives

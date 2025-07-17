@@ -9,7 +9,7 @@ library(patchwork) # For your plotting helper
 # Source your DDM simulation functions and plotting helper
 source("R/02_ddm_simulator_basic.R") # If you use simulate_diffusion_trial_with_path from here
 source("R/03_ddm_simulator_variable.R")
-source("R/utils/plot_basic_ddm_path_rt.R") # Or R/plot_ddm_paths_histograms.R
+source("R/05_plot_basic_ddm_path_rt.R") # Plotting functions for DDM paths and histograms
 
 # --- 1. UI Definition ---
 ui <- fluidPage(
