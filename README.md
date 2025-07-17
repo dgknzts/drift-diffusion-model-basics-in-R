@@ -23,7 +23,7 @@ This work is heavily inspired by and aims to replicate concepts from "An Introdu
 ## Getting Started
 
 1. Clone this repository: `git clone https://github.com/dgknzts/drift-diffusion-model-basics-in-R.git`
-2. Open `DDM_Basics_R.Rproj` in RStudio
+2. Open `DDMBasicsR.Rproj` in RStudio
 3. Explore the vignettes to learn about DDM:
    * Visit the documentation site at https://dgknzts.github.io/drift-diffusion-model-basics-in-R/
    * Or open the R Markdown files in the `vignettes/` folder
