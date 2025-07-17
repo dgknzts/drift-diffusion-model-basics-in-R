@@ -15,7 +15,14 @@ Imports:
     ggplot2,
     dplyr,
     shiny,
-    DT
+    DT,
+    tidyr,
+    scales,
+    gridExtra,
+    patchwork,
+    ggridges,
+    viridis,
+    stringr
 Suggests: 
     knitr,
     rmarkdown,
