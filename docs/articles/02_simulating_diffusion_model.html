@@ -75,131 +75,414 @@ boundaries.</p>
 <p>The DDM is essentially a continuous-time version of the random walk
 model we explored in the previous vignette. Instead of discrete steps,
 evidence is assumed to accumulate continuously, influenced by both a
-systematic "drift" (reflecting the quality of stimulus information) and
-random "noise" (reflecting moment-to-moment variability in
+systematic “drift” (reflecting the quality of stimulus information) and
+random “noise” (reflecting moment-to-moment variability in
 processing).</p>
+<div class="section level3">
+<h3 id="why-use-the-ddm">Why Use the DDM?<a class="anchor" aria-label="anchor" href="#why-use-the-ddm"></a>
+</h3>
+<p>The DDM is particularly valuable because it:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Jointly explains accuracy and RT</strong>: Unlike models
+that treat these separately, the DDM provides a unified account</li>
+<li>
+<strong>Captures individual differences</strong>: Parameters can
+vary across participants and conditions</li>
+<li>
+<strong>Has strong theoretical foundation</strong>: Based on optimal
+decision-making principles</li>
+<li>
+<strong>Provides mechanistic insights</strong>: Links behavioral
+data to underlying cognitive processes</li>
+</ol>
+</div>
+<div class="section level3">
+<h3 id="mathematical-foundation">Mathematical Foundation<a class="anchor" aria-label="anchor" href="#mathematical-foundation"></a>
+</h3>
+<p>The DDM is mathematically described by a stochastic differential
+equation:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>x</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>v</mi><mo>⋅</mo><mi>d</mi><mi>t</mi><mo>+</mo><mi>s</mi><mo>⋅</mo><mi>d</mi><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">dx(t) = v \cdot dt + s \cdot dW(t)</annotation></semantics></math></p>
+<p>Where: -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x(t)</annotation></semantics></math>
+is the evidence state at time
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>
+-
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math>
+is the drift rate (systematic accumulation) -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
+is the diffusion coefficient (noise) -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">dW(t)</annotation></semantics></math>
+is a Wiener process increment</p>
 <p>This vignette will demonstrate how to simulate the DDM using the
-functions created in R/02_diffusion_simulator.R.</p>
+functions created in <code>R/02_ddm_simulator_basic.R</code>.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="key-ddm-parameters">Key DDM Parameters<a class="anchor" aria-label="anchor" href="#key-ddm-parameters"></a>
 </h2>
-<p>Our DDM simulator, simulate_diffusion_trial(), uses the Feller (1968)
-convention, where evidence accumulates between a lower boundary at 0 and
-an upper boundary at a.</p>
+<p>Our DDM simulator, <code>simulate_diffusion_trial()</code>, uses the
+Feller (1968) convention, where evidence accumulates between a lower
+boundary at 0 and an upper boundary at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>.</p>
+<p><img src="02_simulating_diffusion_model_files/figure-html/parameter_illustration-1.png" width="576" style="display: block; margin: auto;"></p>
+<div class="section level3">
+<h3 id="parameter-descriptions">Parameter Descriptions<a class="anchor" aria-label="anchor" href="#parameter-descriptions"></a>
+</h3>
 <ul>
 <li>
-<p><strong>v (Drift Rate):</strong></p>
+<strong>v (Drift Rate):</strong>
 <ul>
-<li><p>The average rate of evidence accumulation.</p></li>
-<li><p>A positive v indicates drift towards the upper boundary a (often
-representing the "correct" response for a given stimulus).</p></li>
-<li><p>A negative v indicates drift towards the lower boundary
-0.</p></li>
-<li><p>The magnitude of v reflects the quality or strength of the
-stimulus information (e.g., higher discriminability leads to a larger
-|v|).</p></li>
+<li>The average rate of evidence accumulation per unit time</li>
+<li>Positive
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math>
+indicates drift towards the upper boundary
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
+</li>
+<li>Negative
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math>
+indicates drift towards the lower boundary 0</li>
+<li>Magnitude reflects stimulus discriminability:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><mi>v</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>∝</mo></mrow><annotation encoding="application/x-tex">|v| \propto</annotation></semantics></math>
+signal strength</li>
+<li>
+<strong>Typical range</strong>: -2 to +2 (in standardized
+units)</li>
 </ul>
 </li>
 <li>
-<p><strong>a (Threshold Separation):</strong></p>
+<strong>a (Threshold Separation):</strong>
 <ul>
-<li><p>The distance between the lower boundary (0) and the upper
-boundary (a).</p></li>
-<li><p>Represents the amount of evidence required to make a
-decision.</p></li>
-<li><p>Higher values of a generally lead to slower but more accurate
-responses (speed-accuracy tradeoff).</p></li>
+<li>Distance between decision boundaries (0 and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>)</li>
+<li>Controls the speed-accuracy tradeoff</li>
+<li>Higher
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
+→ slower, more accurate responses</li>
+<li>Lower
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
+→ faster, less accurate responses</li>
+<li>
+<strong>Typical range</strong>: 0.5 to 2.5</li>
 </ul>
 </li>
 <li>
-<p><strong>z (Starting Point):</strong></p>
+<strong>z (Starting Point):</strong>
 <ul>
-<li><p>The initial state of the evidence accumulator, where 0 < z
-< a.</p></li>
-<li><p>Represents an initial bias towards one of the responses.</p></li>
-<li><p>z = a/2 indicates an unbiased starting point.</p></li>
-<li><p>z > a/2 indicates a bias towards the upper boundary
-a.</p></li>
-<li><p>z < a/2 indicates a bias towards the lower boundary
-0.</p></li>
+<li>Initial evidence state:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>z</mi><mo>&lt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">0 &lt; z &lt; a</annotation></semantics></math>
+</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mi>a</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">z = a/2</annotation></semantics></math>:
+unbiased starting point</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>&gt;</mo><mi>a</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">z &gt; a/2</annotation></semantics></math>:
+bias toward upper boundary</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>&lt;</mo><mi>a</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">z &lt; a/2</annotation></semantics></math>:
+bias toward lower boundary</li>
+<li>
+<strong>Typical range</strong>:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mi>/</mi><mi>a</mi></mrow><annotation encoding="application/x-tex">z/a</annotation></semantics></math>
+from 0.3 to 0.7</li>
 </ul>
 </li>
 <li>
-<p><strong>s (Noise / Infinitesimal Standard
-Deviation):</strong></p>
+<strong>s (Noise/Diffusion Coefficient):</strong>
 <ul>
-<li><p>The standard deviation of the normally distributed increments in
-the evidence accumulation process (scaled by sqrt(dt)).</p></li>
-<li><p>Represents moment-to-moment variability or noise.</p></li>
-<li><p>In many DDM applications, s is fixed (often to 0.1) to allow
-other parameters to be estimated on a common scale.</p></li>
+<li>Standard deviation of moment-to-moment variability</li>
+<li>Often fixed to 0.1 for parameter scaling</li>
+<li>Higher
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
+increases RT variability</li>
+<li>
+<strong>Typical value</strong>: 0.1 (fixed)</li>
 </ul>
 </li>
 <li>
-<p><strong>ter (or t0, Non-Decision Time):</strong></p>
+<strong>ter (Non-Decision Time):</strong>
 <ul>
-<li><p>The time taken for processes outside of the decision-making
-stage, such as stimulus encoding and response execution.</p></li>
-<li><p>It is added to the simulated decision time to yield the total
-predicted RT.</p></li>
+<li>Time for encoding and motor processes</li>
+<li>Added to decision time for total RT</li>
+<li>
+<strong>Typical range</strong>: 0.1 to 0.5 seconds</li>
 </ul>
 </li>
 <li>
-<p><strong>dt (Time Step):</strong></p>
+<strong>dt (Time Step):</strong>
 <ul>
-<li>A small time interval used in the simulation to approximate the
-continuous diffusion process (Euler-Maruyama method). Smaller dt leads
-to higher accuracy but longer computation time.</li>
+<li>Simulation granularity for Euler-Maruyama approximation</li>
+<li>Smaller
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">dt</annotation></semantics></math>
+→ higher accuracy, longer computation</li>
+<li>
+<strong>Recommended</strong>: 0.001 to 0.01 seconds</li>
 </ul>
 </li>
 </ul>
+</div>
 </div>
 <div class="section level2">
 <h2 id="simulating-a-single-ddm-trial">Simulating a Single DDM Trial<a class="anchor" aria-label="anchor" href="#simulating-a-single-ddm-trial"></a>
 </h2>
-<p>The simulate_diffusion_trial() function simulates one instance of the
-evidence accumulation process.</p>
+<p>The <code>simulate_diffusion_trial()</code> function simulates one
+instance of the evidence accumulation process.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">102</span><span class="op">)</span> <span class="co"># For reproducibility</span></span>
 <span></span>
-<span><span class="co"># Example: Positive drift, unbiased start</span></span>
+<span><span class="co"># Example 1: Positive drift, unbiased start</span></span>
 <span><span class="va">trial_A</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial</span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span>, s <span class="op">=</span> <span class="fl">0.1</span>, ter <span class="op">=</span> <span class="fl">0.15</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Trial A: Choice ="</span>, <span class="va">trial_A</span><span class="op">$</span><span class="va">choice</span>, <span class="st">"(1=Upper, 0=Lower), RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_A</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "Trial A: Choice = 1 (1=Upper, 0=Lower), RT = 2.119 s"</span></span></code></pre>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trial A: Choice ="</span>, <span class="va">trial_A</span><span class="op">$</span><span class="va">choice</span>, <span class="st">"(1=Upper, 0=Lower), RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_A</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Trial A: Choice = 1 (1=Upper, 0=Lower), RT = 2.119 s</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Example: Negative drift, biased towards upper</span></span>
+<code class="sourceCode R"><span><span class="co"># Example 2: Negative drift, biased towards upper</span></span>
 <span><span class="va">trial_B</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial</span><span class="op">(</span>v <span class="op">=</span> <span class="op">-</span><span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.7</span>, s <span class="op">=</span> <span class="fl">0.1</span>, ter <span class="op">=</span> <span class="fl">0.15</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Trial B: Choice ="</span>, <span class="va">trial_B</span><span class="op">$</span><span class="va">choice</span>, <span class="st">", RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_B</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "Trial B: Choice = 0 , RT = 3.553 s"</span></span></code></pre>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trial B: Choice ="</span>, <span class="va">trial_B</span><span class="op">$</span><span class="va">choice</span>, <span class="st">", RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_B</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Trial B: Choice = 0 , RT = 3.553 s</span></span></code></pre>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Example: No drift, unbiased start</span></span>
+<code class="sourceCode R"><span><span class="co"># Example 3: No drift, unbiased start</span></span>
 <span><span class="va">trial_C</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial</span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.0</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span>, s <span class="op">=</span> <span class="fl">0.1</span>, ter <span class="op">=</span> <span class="fl">0.15</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Trial C: Choice ="</span>, <span class="va">trial_C</span><span class="op">$</span><span class="va">choice</span>, <span class="st">", RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_C</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "Trial C: Choice = NA , RT = NA s"</span></span></code></pre>
-<p>The choice is 1 if the upper boundary a is reached, and 0 if the
-lower boundary 0 is reached.</p>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trial C: Choice ="</span>, <span class="va">trial_C</span><span class="op">$</span><span class="va">choice</span>, <span class="st">", RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_C</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Trial C: Choice = NA , RT = NA s</span></span></code></pre>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Example 4: High threshold (conservative)</span></span>
+<span><span class="va">trial_D</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial</span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">1.8</span>, z <span class="op">=</span> <span class="fl">0.9</span>, s <span class="op">=</span> <span class="fl">0.1</span>, ter <span class="op">=</span> <span class="fl">0.15</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trial D: Choice ="</span>, <span class="va">trial_D</span><span class="op">$</span><span class="va">choice</span>, <span class="st">", RT ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">trial_D</span><span class="op">$</span><span class="va">rt</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Trial D: Choice = 1 , RT = 4.235 s</span></span></code></pre>
+<p><strong>Interpretation</strong>: - Trial A: Positive drift should
+favor upper boundary (choice = 1) - Trial B: Despite negative drift,
+high starting point might still reach upper boundary - Trial C: With no
+systematic drift, choice depends purely on noise - Trial D: High
+threshold leads to longer, more accurate decisions</p>
+</div>
+<div class="section level2">
+<h2 id="understanding-parameter-effects-through-simulation">Understanding Parameter Effects Through Simulation<a class="anchor" aria-label="anchor" href="#understanding-parameter-effects-through-simulation"></a>
+</h2>
+<p>Let’s systematically explore how each parameter affects DDM
+behavior:</p>
+<div class="section level3">
+<h3 id="effect-of-drift-rate-v">Effect of Drift Rate (v)<a class="anchor" aria-label="anchor" href="#effect-of-drift-rate-v"></a>
+</h3>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1001</span><span class="op">)</span></span>
+<span><span class="va">drift_rates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.3</span>, <span class="op">-</span><span class="fl">0.1</span>, <span class="fl">0</span>, <span class="fl">0.1</span>, <span class="fl">0.3</span><span class="op">)</span></span>
+<span><span class="va">n_trials_per_condition</span> <span class="op">&lt;-</span> <span class="fl">500</span></span>
+<span></span>
+<span><span class="co"># Simulate data for different drift rates</span></span>
+<span><span class="va">drift_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">v</span> <span class="kw">in</span> <span class="va">drift_rates</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_experiment</span><span class="op">(</span></span>
+<span>    n_trials <span class="op">=</span> <span class="va">n_trials_per_condition</span>,</span>
+<span>    v <span class="op">=</span> <span class="va">v</span>, a <span class="op">=</span> <span class="fl">0.7</span>, z <span class="op">=</span> <span class="fl">0.35</span>, s <span class="op">=</span> <span class="fl">0.2</span>, ter <span class="op">=</span> <span class="fl">0.1</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">sim_data</span><span class="op">$</span><span class="va">drift_rate</span> <span class="op">&lt;-</span> <span class="va">v</span></span>
+<span>  <span class="va">drift_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">drift_results</span>, <span class="va">sim_data</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Remove any NA trials</span></span>
+<span><span class="va">drift_results</span> <span class="op">&lt;-</span> <span class="va">drift_results</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot 1: Choice proportions by drift rate</span></span>
+<span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="va">drift_results</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">drift_rate</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span>prop_upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">choice</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">'drop'</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">drift_rate</span>, y <span class="op">=</span> <span class="va">prop_upper</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">3</span>, color <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span>, color <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0.5</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Choice Probability vs. Drift Rate"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Drift Rate (v)"</span>, y <span class="op">=</span> <span class="st">"P(Upper Boundary)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot 2: Mean RT by drift rate and choice</span></span>
+<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="va">drift_results</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">drift_rate</span>, <span class="va">choice</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span>mean_rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">'drop'</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">drift_rate</span>, y <span class="op">=</span> <span class="va">mean_rt</span>, color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_color_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"0"</span> <span class="op">=</span> <span class="st">"salmon"</span>, <span class="st">"1"</span> <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span>,</span>
+<span>                     labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower"</span>, <span class="st">"Upper"</span><span class="op">)</span>,</span>
+<span>                     name <span class="op">=</span> <span class="st">"Boundary"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Mean RT vs. Drift Rate"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Drift Rate (v)"</span>, y <span class="op">=</span> <span class="st">"Mean RT (s)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Combine plots</span></span>
+<span><span class="fu">grid.arrange</span><span class="op">(</span><span class="va">p1</span>, <span class="va">p2</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/drift_rate_effects-1.png" width="768" style="display: block; margin: auto;"></p>
+<p><strong>Key Observations</strong>: - Higher drift rates increase
+accuracy (choice probability) - RTs are typically faster for choices in
+the direction of drift - The relationship between drift rate and choice
+follows a sigmoid (psychometric) function</p>
+</div>
+<div class="section level3">
+<h3 id="effect-of-threshold-a">Effect of Threshold (a)<a class="anchor" aria-label="anchor" href="#effect-of-threshold-a"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1002</span><span class="op">)</span></span>
+<span><span class="va">thresholds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">0.6</span>, <span class="fl">0.8</span>, <span class="fl">1.0</span>, <span class="fl">1.2</span>, <span class="fl">1.4</span>, <span class="fl">1.6</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">threshold_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">a</span> <span class="kw">in</span> <span class="va">thresholds</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_experiment</span><span class="op">(</span></span>
+<span>    n_trials <span class="op">=</span> <span class="va">n_trials_per_condition</span>,</span>
+<span>    v <span class="op">=</span> <span class="fl">0.15</span>, a <span class="op">=</span> <span class="va">a</span>, z <span class="op">=</span> <span class="va">a</span><span class="op">/</span><span class="fl">2</span>, s <span class="op">=</span> <span class="fl">0.25</span>, ter <span class="op">=</span> <span class="fl">0.1</span>  <span class="co"># Keep z proportional to a</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">sim_data</span><span class="op">$</span><span class="va">threshold</span> <span class="op">&lt;-</span> <span class="va">a</span></span>
+<span>  <span class="va">threshold_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">threshold_results</span>, <span class="va">sim_data</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">threshold_results</span> <span class="op">&lt;-</span> <span class="va">threshold_results</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot accuracy and mean RT vs threshold</span></span>
+<span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="va">threshold_results</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">threshold</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span>accuracy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">choice</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">'drop'</span><span class="op">)</span> <span class="op">%&gt;%</span>  <span class="co"># Assuming v &gt; 0, so upper is "correct"</span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">threshold</span>, y <span class="op">=</span> <span class="va">accuracy</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">3</span>, color <span class="op">=</span> <span class="st">"darkgreen"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span>, color <span class="op">=</span> <span class="st">"darkgreen"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Accuracy vs. Threshold"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Threshold (a)"</span>, y <span class="op">=</span> <span class="st">"Accuracy"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="va">threshold_results</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">threshold</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span>mean_rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">'drop'</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">threshold</span>, y <span class="op">=</span> <span class="va">mean_rt</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">3</span>, color <span class="op">=</span> <span class="st">"purple"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span>, color <span class="op">=</span> <span class="st">"purple"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Mean RT vs. Threshold"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Threshold (a)"</span>, y <span class="op">=</span> <span class="st">"Mean RT (s)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">grid.arrange</span><span class="op">(</span><span class="va">p3</span>, <span class="va">p4</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/threshold_effects-1.png" width="768" style="display: block; margin: auto;"></p>
+<p><strong>Key Observations</strong>: - Higher thresholds lead to higher
+accuracy but longer RTs - This demonstrates the fundamental
+speed-accuracy tradeoff in decision-making</p>
+</div>
+<div class="section level3">
+<h3 id="using-utility-functions-for-parameter-exploration">Using Utility Functions for Parameter Exploration<a class="anchor" aria-label="anchor" href="#using-utility-functions-for-parameter-exploration"></a>
+</h3>
+<p>Our enhanced DDM package includes utility functions that make
+parameter exploration more systematic and efficient:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create a parameter grid for systematic exploration</span></span>
+<span><span class="va">param_grid</span> <span class="op">&lt;-</span> <span class="fu">create_parameter_grid</span><span class="op">(</span></span>
+<span>  v_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.3</span><span class="op">)</span>,</span>
+<span>  a_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">1.0</span>, <span class="fl">1.2</span><span class="op">)</span>,</span>
+<span>  z_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">0.5</span>, <span class="fl">0.6</span><span class="op">)</span>,</span>
+<span>  z_as_proportion <span class="op">=</span> <span class="cn">FALSE</span>  <span class="co"># Use absolute z values</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Display first few parameter combinations</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">param_grid</span><span class="op">)</span>, caption <span class="op">=</span> <span class="st">"Example Parameter Grid for Systematic Exploration"</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<caption>Example Parameter Grid for Systematic Exploration</caption>
+<thead><tr class="header">
+<th align="right">v</th>
+<th align="right">a</th>
+<th align="right">z</th>
+<th align="right">s</th>
+<th align="right">ter</th>
+<th align="left">param_set</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.1</td>
+<td align="right">0.8</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_1</td>
+</tr>
+<tr class="even">
+<td align="right">0.2</td>
+<td align="right">0.8</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_2</td>
+</tr>
+<tr class="odd">
+<td align="right">0.3</td>
+<td align="right">0.8</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_3</td>
+</tr>
+<tr class="even">
+<td align="right">0.1</td>
+<td align="right">1.0</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_4</td>
+</tr>
+<tr class="odd">
+<td align="right">0.2</td>
+<td align="right">1.0</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_5</td>
+</tr>
+<tr class="even">
+<td align="right">0.3</td>
+<td align="right">1.0</td>
+<td align="right">0.4</td>
+<td align="right">0.1</td>
+<td align="right">0.1</td>
+<td align="left">set_6</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create organized parameter objects</span></span>
+<span><span class="va">easy_params</span> <span class="op">&lt;-</span> <span class="fu">create_ddm_params</span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.3</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span>, name <span class="op">=</span> <span class="st">"Easy Condition"</span><span class="op">)</span></span>
+<span><span class="va">hard_params</span> <span class="op">&lt;-</span> <span class="fu">create_ddm_params</span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.1</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span>, name <span class="op">=</span> <span class="st">"Hard Condition"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">easy_params</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## DDM Parameters:  Easy Condition</span></span>
+<span><span class="co">##   Drift rate (v): 0.3 </span></span>
+<span><span class="co">##   Threshold (a): 1 </span></span>
+<span><span class="co">##   Starting point (z): 0.5  (z/a = 0.500) </span></span>
+<span><span class="co">##   Noise (s): 0.1 </span></span>
+<span><span class="co">##   Non-decision time (ter): 0.1 </span></span>
+<span><span class="co">##   Time step (dt): 0.001 </span></span>
+<span><span class="co">##   Max decision time: 5</span></span></code></pre>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">hard_params</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## DDM Parameters:  Hard Condition</span></span>
+<span><span class="co">##   Drift rate (v): 0.1 </span></span>
+<span><span class="co">##   Threshold (a): 1 </span></span>
+<span><span class="co">##   Starting point (z): 0.5  (z/a = 0.500) </span></span>
+<span><span class="co">##   Noise (s): 0.1 </span></span>
+<span><span class="co">##   Non-decision time (ter): 0.1 </span></span>
+<span><span class="co">##   Time step (dt): 0.001 </span></span>
+<span><span class="co">##   Max decision time: 5</span></span></code></pre>
+</div>
 </div>
 <div class="section level2">
 <h2 id="simulating-a-ddm-experiment">Simulating a DDM Experiment<a class="anchor" aria-label="anchor" href="#simulating-a-ddm-experiment"></a>
 </h2>
-<p>To understand the model's predictions for RT distributions and choice
+<p>To understand the model’s predictions for RT distributions and choice
 probabilities, we simulate many trials using
-simulate_diffusion_experiment().</p>
-<p>Let's simulate an experiment with parameters that should yield a mix
-of choices and a right-skewed RT distribution.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code>simulate_diffusion_experiment()</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">202</span><span class="op">)</span></span>
 <span><span class="va">n_sim_trials</span> <span class="op">&lt;-</span> <span class="fl">2000</span> <span class="co"># Use a good number of trials for smooth distributions</span></span>
 <span></span>
 <span><span class="co"># Define a set of parameters</span></span>
 <span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  v <span class="op">=</span> <span class="fl">0.15</span>,      <span class="co"># Moderate positive drift</span></span>
-<span>  a <span class="op">=</span> <span class="fl">1.2</span>,       <span class="co"># Threshold</span></span>
-<span>  z <span class="op">=</span> <span class="fl">0.6</span>,       <span class="co"># Unbiased start (a/2)</span></span>
-<span>  s <span class="op">=</span> <span class="fl">0.5</span>,       <span class="co"># Standard noise</span></span>
+<span>  v <span class="op">=</span> <span class="fl">0.1</span>,      <span class="co"># Moderate positive drift</span></span>
+<span>  a <span class="op">=</span> <span class="fl">0.7</span>,       <span class="co"># Threshold</span></span>
+<span>  z <span class="op">=</span> <span class="fl">0.35</span>,       <span class="co"># Unbiased start (a/2)</span></span>
+<span>  s <span class="op">=</span> <span class="fl">0.2</span>,       <span class="co"># Standard noise</span></span>
 <span>  ter <span class="op">=</span> <span class="fl">0.2</span>,     <span class="co"># Non-decision time</span></span>
-<span>  dt <span class="op">=</span> <span class="fl">0.01</span>     <span class="co"># Time step</span></span>
+<span>  dt <span class="op">=</span> <span class="fl">0.01</span>     <span class="co"># Time step (higher precision)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ddm_data</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_experiment</span><span class="op">(</span></span>
@@ -213,9 +496,10 @@ of choices and a right-skewed RT distribution.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Display the first few rows</span></span>
-<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ddm_data</span><span class="op">)</span>, caption <span class="op">=</span> <span class="st">"First 6 trials of the simulated DDM experiment."</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ddm_data</span>, <span class="fl">10</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>             caption <span class="op">=</span> <span class="st">"First 10 trials of the simulated DDM experiment."</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
-<caption>First 6 trials of the simulated DDM experiment.</caption>
+<caption>First 10 trials of the simulated DDM experiment.</caption>
 <thead><tr class="header">
 <th align="right">trial</th>
 <th align="right">choice</th>
@@ -226,78 +510,147 @@ of choices and a right-skewed RT distribution.</p>
 <tr class="odd">
 <td align="right">1</td>
 <td align="right">1</td>
-<td align="right">0.74</td>
-<td align="right">0.54</td>
+<td align="right">0.83</td>
+<td align="right">0.63</td>
 </tr>
 <tr class="even">
 <td align="right">2</td>
 <td align="right">1</td>
-<td align="right">1.69</td>
-<td align="right">1.49</td>
+<td align="right">1.73</td>
+<td align="right">1.53</td>
 </tr>
 <tr class="odd">
 <td align="right">3</td>
 <td align="right">0</td>
-<td align="right">3.21</td>
-<td align="right">3.01</td>
+<td align="right">3.63</td>
+<td align="right">3.43</td>
 </tr>
 <tr class="even">
 <td align="right">4</td>
-<td align="right">0</td>
-<td align="right">0.88</td>
-<td align="right">0.68</td>
+<td align="right">1</td>
+<td align="right">2.85</td>
+<td align="right">2.65</td>
 </tr>
 <tr class="odd">
 <td align="right">5</td>
 <td align="right">1</td>
-<td align="right">1.25</td>
-<td align="right">1.05</td>
+<td align="right">1.39</td>
+<td align="right">1.19</td>
 </tr>
 <tr class="even">
 <td align="right">6</td>
+<td align="right">1</td>
+<td align="right">1.58</td>
+<td align="right">1.38</td>
+</tr>
+<tr class="odd">
+<td align="right">7</td>
 <td align="right">0</td>
-<td align="right">0.93</td>
-<td align="right">0.73</td>
+<td align="right">1.23</td>
+<td align="right">1.03</td>
+</tr>
+<tr class="even">
+<td align="right">8</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="right">9</td>
+<td align="right">1</td>
+<td align="right">4.99</td>
+<td align="right">4.79</td>
+</tr>
+<tr class="even">
+<td align="right">10</td>
+<td align="right">1</td>
+<td align="right">4.90</td>
+<td align="right">4.70</td>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Summary of the data</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">ddm_data</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##      trial            choice             rt        decision_time  </span></span>
-<span><span class="co">##  Min.   :   1.0   Min.   :0.0000   Min.   :0.310   Min.   :0.110  </span></span>
-<span><span class="co">##  1st Qu.: 500.8   1st Qu.:0.0000   1st Qu.:0.820   1st Qu.:0.620  </span></span>
-<span><span class="co">##  Median :1000.5   Median :1.0000   Median :1.310   Median :1.110  </span></span>
-<span><span class="co">##  Mean   :1000.5   Mean   :0.6779   Mean   :1.607   Mean   :1.407  </span></span>
-<span><span class="co">##  3rd Qu.:1500.2   3rd Qu.:1.0000   3rd Qu.:2.080   3rd Qu.:1.880  </span></span>
-<span><span class="co">##  Max.   :2000.0   Max.   :1.0000   Max.   :5.100   Max.   :4.900  </span></span>
-<span><span class="co">##                   NA's   :47       NA's   :47      NA's   :47</span></span></code></pre>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Summary of the data using our utility function</span></span>
+<span><span class="va">summary_table</span> <span class="op">&lt;-</span> <span class="fu">create_summary_table</span><span class="op">(</span><span class="va">ddm_data</span>, correct_response <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">summary_table</span>, caption <span class="op">=</span> <span class="st">"Comprehensive Summary of DDM Simulation Results"</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<caption>Comprehensive Summary of DDM Simulation Results</caption>
+<thead><tr class="header">
+<th align="left">Statistic</th>
+<th align="right">Value</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Total Trials</td>
+<td align="right">2000.000</td>
+</tr>
+<tr class="even">
+<td align="left">Valid Trials</td>
+<td align="right">1763.000</td>
+</tr>
+<tr class="odd">
+<td align="left">Timeout Rate (%)</td>
+<td align="right">11.850</td>
+</tr>
+<tr class="even">
+<td align="left">Overall Accuracy</td>
+<td align="right">0.853</td>
+</tr>
+<tr class="odd">
+<td align="left">Mean RT (s)</td>
+<td align="right">2.290</td>
+</tr>
+<tr class="even">
+<td align="left">Median RT (s)</td>
+<td align="right">2.070</td>
+</tr>
+<tr class="odd">
+<td align="left">RT SD (s)</td>
+<td align="right">1.162</td>
+</tr>
+<tr class="even">
+<td align="left">RT Skewness</td>
+<td align="right">0.189</td>
+</tr>
+<tr class="odd">
+<td align="left">Choice 0 Proportion</td>
+<td align="right">0.147</td>
+</tr>
+<tr class="even">
+<td align="left">Choice 1 Proportion</td>
+<td align="right">0.853</td>
+</tr>
+</tbody>
+</table>
 <div class="section level3">
 <h3 id="analyzing-ddm-experiment-results">Analyzing DDM Experiment Results<a class="anchor" aria-label="anchor" href="#analyzing-ddm-experiment-results"></a>
 </h3>
 <div class="section level4">
-<h4 id="choice-proportions">
-<strong>1. Choice Proportions</strong><a class="anchor" aria-label="anchor" href="#choice-proportions"></a>
+<h4 id="choice-proportions-and-accuracy">
+<strong>1. Choice Proportions and Accuracy</strong><a class="anchor" aria-label="anchor" href="#choice-proportions-and-accuracy"></a>
 </h4>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Filter out NA choices (if max_decision_time was hit)</span></span>
 <span><span class="va">valid_ddm_choices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html" class="external-link">na.omit</a></span><span class="op">(</span><span class="va">ddm_data</span><span class="op">$</span><span class="va">choice</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">choice_counts_ddm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">valid_ddm_choices</span><span class="op">)</span></span>
 <span><span class="va">choice_proportions_ddm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/proportions.html" class="external-link">prop.table</a></span><span class="op">(</span><span class="va">choice_counts_ddm</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"DDM Choice Counts:"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "DDM Choice Counts:"</span></span></code></pre>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Choice Counts:\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Choice Counts:</span></span></code></pre>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">choice_counts_ddm</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## valid_ddm_choices</span></span>
 <span><span class="co">##    0    1 </span></span>
-<span><span class="co">##  629 1324</span></span></code></pre>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"DDM Choice Proportions:"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "DDM Choice Proportions:"</span></span></code></pre>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">choice_proportions_ddm</span><span class="op">)</span>, col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Choice"</span>, <span class="st">"Proportion"</span><span class="op">)</span>, caption <span class="op">=</span> <span class="st">"DDM Choice Proportions"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">##  260 1503</span></span></code></pre>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nChoice Proportions:\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## </span></span>
+<span><span class="co">## Choice Proportions:</span></span></code></pre>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">choice_proportions_ddm</span><span class="op">)</span>, </span>
+<span>             col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Choice"</span>, <span class="st">"Proportion"</span><span class="op">)</span>, </span>
+<span>             caption <span class="op">=</span> <span class="st">"DDM Choice Proportions"</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <caption>DDM Choice Proportions</caption>
 <thead><tr class="header">
@@ -307,112 +660,138 @@ of choices and a right-skewed RT distribution.</p>
 <tbody>
 <tr class="odd">
 <td align="left">0</td>
-<td align="right">0.3220686</td>
+<td align="right">0.1474759</td>
 </tr>
 <tr class="even">
 <td align="left">1</td>
-<td align="right">0.6779314</td>
+<td align="right">0.8525241</td>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/barplot.html" class="external-link">barplot</a></span><span class="op">(</span><span class="va">choice_proportions_ddm</span>,</span>
-<span>        main <span class="op">=</span> <span class="st">"DDM Choice Proportions"</span>,</span>
-<span>        xlab <span class="op">=</span> <span class="st">"Choice (1 = Upper, 0 = Lower)"</span>,</span>
-<span>        ylab <span class="op">=</span> <span class="st">"Proportion"</span>,</span>
-<span>        names.arg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Boundary (0)"</span>, <span class="st">"Upper Boundary (1)"</span><span class="op">)</span>, <span class="co"># More descriptive labels</span></span>
-<span>        col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"lightblue"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-2-1.png" alt="Bar chart showing proportion of choices for upper and lower boundaries in the DDM simulation" width="700" style="display: block; margin: auto;">
-<p>With a positive drift (v = 0.15), we expect more choices for the
-upper boundary (Choice 1).</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create a more informative bar plot</span></span>
+<span><span class="va">choice_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Boundary <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower (0)"</span>, <span class="st">"Upper (1)"</span><span class="op">)</span>,</span>
+<span>  Proportion <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">choice_proportions_ddm</span><span class="op">)</span>,</span>
+<span>  Count <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">choice_counts_ddm</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">choice_df</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">Boundary</span>, y <span class="op">=</span> <span class="va">Proportion</span>, fill <span class="op">=</span> <span class="va">Boundary</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_col</span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.8</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_text</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">Proportion</span><span class="op">*</span><span class="fl">100</span>, <span class="fl">1</span><span class="op">)</span>, <span class="st">"%\n(n="</span>, <span class="va">Count</span>, <span class="st">")"</span><span class="op">)</span><span class="op">)</span>, </span>
+<span>            vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">4</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"steelblue"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Choice Proportions (v ="</span>, <span class="va">params</span><span class="op">$</span><span class="va">v</span>, <span class="st">")"</span><span class="op">)</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Decision Boundary"</span>, y <span class="op">=</span> <span class="st">"Proportion"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ylim</span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">choice_df</span><span class="op">$</span><span class="va">Proportion</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1.2</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/choice_analysis-1.png" width="768" style="display: block; margin: auto;"></p>
+<p><strong>Expected Result</strong>: With positive drift (v = 0.1), we
+expect more choices for the upper boundary (Choice 1), which we observe
+as 85.3% of trials.</p>
 </div>
 <div class="section level4">
 <h4 id="reaction-time-rt-distributions">
 <strong>2. Reaction Time (RT) Distributions</strong><a class="anchor" aria-label="anchor" href="#reaction-time-rt-distributions"></a>
 </h4>
 <p>The DDM is well-known for predicting positively skewed RT
-distributions.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+distributions - a hallmark of decision-making data.</p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Filter out NA RTs</span></span>
 <span><span class="va">valid_ddm_rt_data</span> <span class="op">&lt;-</span> <span class="va">ddm_data</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">valid_ddm_rt_data</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
-<span></span>
-<span>  <span class="co"># Plot for decision_time only</span></span>
-<span>  <span class="va">p_rt_decision</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">valid_ddm_rt_data</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">decision_time</span>, fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">geom_histogram</span><span class="op">(</span>binwidth <span class="op">=</span> <span class="fl">0.025</span>, alpha <span class="op">=</span> <span class="fl">0.8</span>, position <span class="op">=</span> <span class="st">"identity"</span>, color<span class="op">=</span><span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  </span>
+<span>  <span class="co"># Create comprehensive RT analysis</span></span>
+<span>  <span class="co"># Plot 1: Decision time distributions</span></span>
+<span>  <span class="va">p_decision</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">valid_ddm_rt_data</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">decision_time</span>, fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_histogram</span><span class="op">(</span>binwidth <span class="op">=</span> <span class="fl">0.02</span>, alpha <span class="op">=</span> <span class="fl">0.7</span>, position <span class="op">=</span> <span class="st">"identity"</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Boundary (0)"</span>, <span class="st">"Upper Boundary (1)"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">labs</span><span class="op">(</span></span>
-<span>      title <span class="op">=</span> <span class="st">"DDM Decision Time Distributions"</span>,</span>
-<span>      x <span class="op">=</span> <span class="st">"Decision Time (s)"</span>,</span>
-<span>      y <span class="op">=</span> <span class="st">"Frequency"</span>,</span>
-<span>      fill <span class="op">=</span> <span class="st">"Choice"</span></span>
-<span>    <span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p_rt_decision</span><span class="op">)</span></span>
+<span>    <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"steelblue"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Decision Time Distributions"</span>,</span>
+<span>         x <span class="op">=</span> <span class="st">"Decision Time (s)"</span>, y <span class="op">=</span> <span class="st">"Frequency"</span>, fill <span class="op">=</span> <span class="st">"Choice"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Plot 2: Total RT distributions  </span></span>
+<span>  <span class="va">p_total</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">valid_ddm_rt_data</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">rt</span>, fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_histogram</span><span class="op">(</span>binwidth <span class="op">=</span> <span class="fl">0.02</span>, alpha <span class="op">=</span> <span class="fl">0.7</span>, position <span class="op">=</span> <span class="st">"identity"</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower Boundary (0)"</span>, <span class="st">"Upper Boundary (1)"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"steelblue"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Total RT Distributions (Decision Time + Non-Decision Time)"</span>,</span>
+<span>         x <span class="op">=</span> <span class="st">"Total RT (s)"</span>, y <span class="op">=</span> <span class="st">"Frequency"</span>, fill <span class="op">=</span> <span class="st">"Choice"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="fu">grid.arrange</span><span class="op">(</span><span class="va">p_decision</span>, <span class="va">p_total</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Summary statistics for RTs</span></span>
 <span>  <span class="va">rt_summary_ddm</span> <span class="op">&lt;-</span> <span class="va">valid_ddm_rt_data</span> <span class="op">%&gt;%</span></span>
 <span>    <span class="fu">group_by</span><span class="op">(</span><span class="va">choice</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
 <span>    <span class="fu">summarise</span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="fu">n</span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      Mean_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
 <span>      Median_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
 <span>      SD_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
 <span>      Min_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
 <span>      Max_RT <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
-<span>      N <span class="op">=</span> <span class="fu">n</span><span class="op">(</span><span class="op">)</span></span>
-<span>    <span class="op">)</span> <span class="op">%&gt;%</span> <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span> <span class="co"># Ungroup for kable</span></span>
+<span>      Skewness <span class="op">=</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,  <span class="co"># Simple skewness measure</span></span>
+<span>      .groups <span class="op">=</span> <span class="st">'drop'</span></span>
+<span>    <span class="op">)</span></span>
 <span></span>
-<span>  <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">rt_summary_ddm</span>, caption <span class="op">=</span> <span class="st">"Summary Statistics for DDM RTs by Choice"</span><span class="op">)</span></span>
-<span>  <span class="co"># Check for skew: Mean &gt; Median</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Mean RTs:"</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rt_summary_ddm</span><span class="op">$</span><span class="va">Mean_RT</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Median RTs:"</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rt_summary_ddm</span><span class="op">$</span><span class="va">Median_RT</span><span class="op">)</span></span>
+<span>  <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">rt_summary_ddm</span>, digits <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>               caption <span class="op">=</span> <span class="st">"Summary Statistics for DDM RTs by Choice"</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Highlight the skewness</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\n=== Skewness Analysis ===\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Positive skew (Mean &gt; Median) indicates right-skewed distributions\n"</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">rt_summary_ddm</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">choice_val</span> <span class="op">&lt;-</span> <span class="va">rt_summary_ddm</span><span class="op">$</span><span class="va">choice</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
+<span>    <span class="va">skew_val</span> <span class="op">&lt;-</span> <span class="va">rt_summary_ddm</span><span class="op">$</span><span class="va">Skewness</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Choice"</span>, <span class="va">choice_val</span>, <span class="st">": Skewness ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">skew_val</span>, <span class="fl">3</span><span class="op">)</span>, </span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">skew_val</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"(right-skewed)"</span>, <span class="st">"(left-skewed)"</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
 <span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No valid trials with RTs to plot (all may have hit max_decision_time)."</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"No valid trials with RTs to plot (all may have hit max_decision_time).\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" alt="Histograms of decision time distributions split by choice (upper vs. lower boundary), showing the characteristic right-skewed shape of DDM reaction times" width="700" style="display: block; margin: auto;">
-<pre><code><span><span class="co">## [1] "Mean RTs:"</span></span>
-<span><span class="co">## [1] 1.589921 1.615491</span></span>
-<span><span class="co">## [1] "Median RTs:"</span></span>
-<span><span class="co">## [1] 1.31 1.31</span></span></code></pre>
-<p>We should observe the characteristic right-skew (positive skew) in
-these distributions, where the mean RT is typically greater than the
-median RT. The decision time plot helps isolate the skew predicted by
-the accumulation process itself, separate from the non-decision
-time.</p>
+<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_rt_distributions-1.png" width="768" style="display: block; margin: auto;"></p>
+<pre><code><span><span class="co">## </span></span>
+<span><span class="co">## === Skewness Analysis ===</span></span>
+<span><span class="co">## Positive skew (Mean &gt; Median) indicates right-skewed distributions</span></span>
+<span><span class="co">## Choice 0 : Skewness = 0.134 (right-skewed) </span></span>
+<span><span class="co">## Choice 1 : Skewness = 0.204 (right-skewed)</span></span></code></pre>
+<p><strong>Key Observations</strong>: - Both distributions show positive
+skew (right tail), characteristic of DDM predictions - “Correct”
+responses (upper boundary, given positive drift) tend to be faster on
+average - The addition of non-decision time shifts the entire
+distribution rightward</p>
 </div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="visualizing-evidence-accumulation-paths-optional-advanced">Visualizing Evidence Accumulation Paths (Optional Advanced)<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths-optional-advanced"></a>
+<h2 id="visualizing-evidence-accumulation-paths">Visualizing Evidence Accumulation Paths<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths"></a>
 </h2>
-<p>To gain a more intuitive understanding of the DDM, it's helpful to
-visualize the actual paths of evidence accumulation on a few example
-trials. This is similar to Figure 1 in "An Introduction to the Diffusion
-Model of Decision-Making" by Smith and Ratcliff.</p>
-<p>We've created a modified function,
-`simulate_diffusion_trial_with_path()`, which, in addition to the choice
-and RT, also returns the history of evidence levels over time for a
-single trial.</p>
-<p>Let's simulate a few trials and plot their paths. We'll aim for a
-scenario that can produce varied outcomes.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p>To gain intuitive understanding of the DDM, let’s visualize actual
+evidence accumulation paths.</p>
+<div class="section level3">
+<h3 id="individual-trial-paths">Individual Trial Paths<a class="anchor" aria-label="anchor" href="#individual-trial-paths"></a>
+</h3>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path_params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  v <span class="op">=</span> <span class="fl">0.1</span>,    <span class="co"># A moderate drift, so paths aren't too quick</span></span>
+<span>  v <span class="op">=</span> <span class="fl">0.1</span>,    <span class="co"># Moderate drift for interesting paths</span></span>
 <span>  a <span class="op">=</span> <span class="fl">1.0</span>,    <span class="co"># Threshold</span></span>
 <span>  z <span class="op">=</span> <span class="fl">0.5</span>,    <span class="co"># Unbiased start</span></span>
-<span>  s <span class="op">=</span> <span class="fl">0.5</span>,   <span class="co"># A bit more noise to make paths interesting</span></span>
+<span>  s <span class="op">=</span> <span class="fl">0.3</span>,    <span class="co"># Moderate noise for variability</span></span>
 <span>  dt <span class="op">=</span> <span class="fl">0.01</span>,</span>
-<span>  ter <span class="op">=</span> <span class="fl">0.1</span>   <span class="co"># ter is not directly used in path plotting but good for context</span></span>
+<span>  ter <span class="op">=</span> <span class="fl">0.1</span>   </span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">n_paths_to_plot</span> <span class="op">&lt;-</span> <span class="fl">5</span> <span class="co"># Number of example paths</span></span>
-<span><span class="va">all_paths_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span><span class="st">"list"</span>, <span class="va">n_paths_to_plot</span><span class="op">)</span> <span class="co"># To store data for each path</span></span>
+<span><span class="va">n_paths_to_plot</span> <span class="op">&lt;-</span> <span class="fl">8</span> <span class="co"># More paths for better illustration</span></span>
+<span><span class="va">all_paths_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span><span class="st">"list"</span>, <span class="va">n_paths_to_plot</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">343</span><span class="op">)</span> <span class="co"># For reproducibility of these specific paths</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">343</span><span class="op">)</span> <span class="co"># For reproducibility</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_paths_to_plot</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">trial_with_path</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial_with_path</span><span class="op">(</span></span>
 <span>    v <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">v</span>,</span>
@@ -422,106 +801,437 @@ scenario that can produce varied outcomes.</p>
 <span>    dt <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">dt</span>,</span>
 <span>    ter <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">ter</span></span>
 <span>  <span class="op">)</span></span>
-<span>  <span class="co"># Add a trial identifier to the path data</span></span>
 <span>  <span class="va">trial_with_path</span><span class="op">$</span><span class="va">path_data</span><span class="op">$</span><span class="va">trial_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Trial"</span>, <span class="va">i</span><span class="op">)</span></span>
-<span>  <span class="va">trial_with_path</span><span class="op">$</span><span class="va">path_data</span><span class="op">$</span><span class="va">final_choice</span> <span class="op">&lt;-</span> <span class="va">trial_with_path</span><span class="op">$</span><span class="va">choice</span> <span class="co"># Store choice for coloring</span></span>
+<span>  <span class="va">trial_with_path</span><span class="op">$</span><span class="va">path_data</span><span class="op">$</span><span class="va">final_choice</span> <span class="op">&lt;-</span> <span class="va">trial_with_path</span><span class="op">$</span><span class="va">choice</span></span>
+<span>  <span class="va">trial_with_path</span><span class="op">$</span><span class="va">path_data</span><span class="op">$</span><span class="va">final_rt</span> <span class="op">&lt;-</span> <span class="va">trial_with_path</span><span class="op">$</span><span class="va">rt</span></span>
 <span>  <span class="va">all_paths_data</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">trial_with_path</span><span class="op">$</span><span class="va">path_data</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Combine all path data into a single data frame for ggplot</span></span>
 <span><span class="va">plot_df_paths</span> <span class="op">&lt;-</span> <span class="fu">bind_rows</span><span class="op">(</span><span class="va">all_paths_data</span><span class="op">)</span></span>
+<span><span class="va">threshold_a</span> <span class="op">&lt;-</span> <span class="va">path_params</span><span class="op">$</span><span class="va">a</span></span>
 <span></span>
-<span><span class="co"># Get the threshold 'a' (assuming it's the same for all these trials)</span></span>
-<span><span class="va">threshold_a</span> <span class="op">&lt;-</span> <span class="va">path_params</span><span class="op">$</span><span class="va">a</span></span></code></pre></div>
-<p>Now we can plot these paths using ggplot2.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="va">plot_df_paths</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">time_s</span>, y <span class="op">=</span> <span class="va">evidence</span>, group <span class="op">=</span> <span class="va">trial_id</span>, color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">final_choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">geom_line</span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.8</span>, linewidth <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="va">threshold_a</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.9</span>, y <span class="op">=</span> <span class="va">threshold_a</span> <span class="op">+</span> <span class="fl">0.05</span>, label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Boundary a ="</span>, <span class="va">threshold_a</span><span class="op">)</span>, hjust <span class="op">=</span> <span class="fl">1</span>, size<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.9</span>, y <span class="op">=</span> <span class="op">-</span><span class="fl">0.05</span>, label <span class="op">=</span> <span class="st">"Boundary 0"</span>, hjust <span class="op">=</span> <span class="fl">1</span>, size<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="va">plot_df_paths</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">time_s</span>, y <span class="op">=</span> <span class="va">evidence</span>, group <span class="op">=</span> <span class="va">trial_id</span>, </span>
+<span>                           color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">final_choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_line</span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.8</span>, linewidth <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"black"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="va">threshold_a</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"black"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">z</span>, linetype <span class="op">=</span> <span class="st">"dotted"</span>, color <span class="op">=</span> <span class="st">"grey40"</span>, linewidth <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="co"># Add drift line</span></span>
+<span>    <span class="fu">geom_segment</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="fl">0</span>, y <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">z</span>, </span>
+<span>                     xend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, </span>
+<span>                     yend <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">z</span> <span class="op">+</span> <span class="va">path_params</span><span class="op">$</span><span class="va">v</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                 color <span class="op">=</span> <span class="st">"orange"</span>, linewidth <span class="op">=</span> <span class="fl">1.5</span>, linetype <span class="op">=</span> <span class="st">"longdash"</span>,</span>
+<span>                 inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.95</span>, </span>
+<span>             y <span class="op">=</span> <span class="va">threshold_a</span> <span class="op">+</span> <span class="fl">0.05</span>, label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Upper boundary (a ="</span>, <span class="va">threshold_a</span>, <span class="st">")"</span><span class="op">)</span>, </span>
+<span>             hjust <span class="op">=</span> <span class="fl">1</span>, size <span class="op">=</span> <span class="fl">3.5</span>, fontface <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.95</span>, </span>
+<span>             y <span class="op">=</span> <span class="op">-</span><span class="fl">0.05</span>, label <span class="op">=</span> <span class="st">"Lower boundary (0)"</span>, </span>
+<span>             hjust <span class="op">=</span> <span class="fl">1</span>, size <span class="op">=</span> <span class="fl">3.5</span>, fontface <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fl">0.1</span>, y <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">z</span> <span class="op">+</span> <span class="fl">0.08</span>, </span>
+<span>             label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Starting point (z ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">z</span>, <span class="st">")"</span><span class="op">)</span>, </span>
+<span>             hjust <span class="op">=</span> <span class="fl">0</span>, size <span class="op">=</span> <span class="fl">3.5</span>, color <span class="op">=</span> <span class="st">"grey40"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">annotate</span><span class="op">(</span><span class="st">"text"</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.6</span>, </span>
+<span>             y <span class="op">=</span> <span class="va">path_params</span><span class="op">$</span><span class="va">z</span> <span class="op">+</span> <span class="va">path_params</span><span class="op">$</span><span class="va">v</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">plot_df_paths</span><span class="op">$</span><span class="va">time_s</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.6</span> <span class="op">+</span> <span class="fl">0.1</span>, </span>
+<span>             label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Average drift (v ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">v</span>, <span class="st">")"</span><span class="op">)</span>, </span>
+<span>             hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">3.5</span>, color <span class="op">=</span> <span class="st">"orange"</span>, fontface <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">scale_color_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"0"</span> <span class="op">=</span> <span class="st">"salmon"</span>, <span class="st">"1"</span> <span class="op">=</span> <span class="st">"steelblue"</span>, <span class="st">"NA"</span> <span class="op">=</span> <span class="st">"grey"</span><span class="op">)</span>,</span>
 <span>                       labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"0"</span> <span class="op">=</span> <span class="st">"Lower Boundary"</span>, <span class="st">"1"</span> <span class="op">=</span> <span class="st">"Upper Boundary"</span>, <span class="st">"NA"</span><span class="op">=</span> <span class="st">"Timeout"</span><span class="op">)</span>,</span>
-<span>                       name <span class="op">=</span> <span class="st">"Outcome"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">labs</span><span class="op">(</span></span>
-<span>      title <span class="op">=</span> <span class="st">"Example DDM Evidence Accumulation Paths"</span>,</span>
-<span>      x <span class="op">=</span> <span class="st">"Decision Time (s)"</span>,</span>
-<span>      y <span class="op">=</span> <span class="st">"Accumulated Evidence"</span></span>
-<span>    <span class="op">)</span> <span class="op">+</span></span>
+<span>                       name <span class="op">=</span> <span class="st">"Trial Outcome"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"DDM Evidence Accumulation Paths"</span>,</span>
+<span>         subtitle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Parameters: v ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">v</span>, <span class="st">", a ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">a</span>, </span>
+<span>                         <span class="st">", z ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">z</span>, <span class="st">", s ="</span>, <span class="va">path_params</span><span class="op">$</span><span class="va">s</span><span class="op">)</span>,</span>
+<span>         x <span class="op">=</span> <span class="st">"Decision Time (s)"</span>, y <span class="op">=</span> <span class="st">"Accumulated Evidence"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span></span>
+<span>    <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"top"</span>,</span>
+<span>          plot.title <span class="op">=</span> <span class="fu">element_text</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">14</span>, face <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span>,</span>
+<span>          plot.subtitle <span class="op">=</span> <span class="fu">element_text</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"No path data to plot."</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"No path data to plot.\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<img src="02_simulating_diffusion_model_files/figure-html/ddm_path_plotting-1.png" alt="Line graph showing multiple evidence accumulation paths over time, with different colored lines representing trials ending at upper and lower boundaries, and dashed horizontal lines indicating the decision boundaries" width="768" style="display: block; margin: auto;">
+<p><img src="02_simulating_diffusion_model_files/figure-html/ddm_path_simulation_setup-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
 <div class="section level3">
-<h3 id="visualizing-evidence-accumulation-paths-with-helper-function">Visualizing Evidence Accumulation Paths with Helper Function<a class="anchor" aria-label="anchor" href="#visualizing-evidence-accumulation-paths-with-helper-function"></a>
+<h3 id="comprehensive-path-and-rt-visualization">Comprehensive Path and RT Visualization<a class="anchor" aria-label="anchor" href="#comprehensive-path-and-rt-visualization"></a>
 </h3>
-<p>To better visualize the DDM process, we'll use our custom helper
-function `plot_ddm_paths_with_histograms()`. This function will display
-several trial paths, decision boundaries, the starting point, and the
-average drift line. It will also generate separate plots for the RT
-distributions at each boundary.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Parameters for path visualization</span></span>
-<span><span class="va">path_plot_params_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  v <span class="op">=</span> <span class="fl">0.05</span>,    <span class="co"># Moderate positive drift</span></span>
-<span>  a <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  z <span class="op">=</span> <span class="fl">0.5</span>,    <span class="co"># Unbiased</span></span>
-<span>  s <span class="op">=</span> <span class="fl">0.4</span>,   <span class="co"># More noise</span></span>
-<span>  ter <span class="op">=</span> <span class="fl">0.0</span>,  <span class="co"># For ridges, we're plotting decision_time so ter=0 in sim is cleaner</span></span>
+<p>Our custom visualization function provides an integrated view of the
+decision process:</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Parameters for comprehensive visualization</span></span>
+<span><span class="va">path_plot_params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  v <span class="op">=</span> <span class="fl">0.08</span>,    <span class="co"># Moderate positive drift</span></span>
+<span>  a <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span>  z <span class="op">=</span> <span class="fl">0.5</span>,     <span class="co"># Unbiased</span></span>
+<span>  s <span class="op">=</span> <span class="fl">0.35</span>,    <span class="co"># Moderate noise</span></span>
+<span>  ter <span class="op">=</span> <span class="fl">0.0</span>,   <span class="co"># Use 0 for cleaner decision time plots</span></span>
 <span>  dt <span class="op">=</span> <span class="fl">0.01</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">n_example_paths_int</span> <span class="op">&lt;-</span> <span class="fl">200</span> <span class="co"># Need more trials for decent ridges</span></span>
+<span><span class="va">n_example_paths</span> <span class="op">&lt;-</span> <span class="fl">300</span> <span class="co"># Sufficient trials for good distributions</span></span>
 <span></span>
 <span><span class="co"># Simulate the trials</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">505</span><span class="op">)</span></span>
-<span><span class="va">example_trials_list_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span><span class="st">"list"</span>, <span class="va">n_example_paths_int</span><span class="op">)</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_example_paths_int</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">example_trials_list_int</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial_with_path</span><span class="op">(</span></span>
-<span>    v <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">v</span>,</span>
-<span>    a <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">a</span>,</span>
-<span>    z <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">z</span>,</span>
-<span>    s <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">s</span>,</span>
-<span>    dt <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">dt</span>,</span>
-<span>    ter <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">ter</span> <span class="co"># Using ter=0 from params for this plot</span></span>
+<span><span class="va">example_trials_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span><span class="st">"list"</span>, <span class="va">n_example_paths</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_example_paths</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">example_trials_list</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_trial_with_path</span><span class="op">(</span></span>
+<span>    v <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">v</span>,</span>
+<span>    a <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">a</span>,</span>
+<span>    z <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">z</span>,</span>
+<span>    s <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">s</span>,</span>
+<span>    dt <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">dt</span>,</span>
+<span>    ter <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">ter</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">example_trials_list_int</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">20</span><span class="op">)</span><span class="op">{</span> <span class="co"># Check if enough valid trials for hists</span></span>
+<span><span class="co"># Check if we have enough valid trials</span></span>
+<span><span class="va">valid_trials</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">example_trials_list</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Generated"</span>, <span class="va">valid_trials</span>, <span class="st">"valid trials out of"</span>, <span class="va">n_example_paths</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Generated 281 valid trials out of 300</span></span></code></pre>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">valid_trials</span> <span class="op">&gt;</span> <span class="fl">50</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">plot_ddm_paths_with_histograms</span><span class="op">(</span></span>
-<span>    trials_data_list <span class="op">=</span> <span class="va">example_trials_list_int</span>,</span>
-<span>    v_drift <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">v</span>,</span>
-<span>    z_start <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">z</span>,</span>
-<span>    a_threshold <span class="op">=</span> <span class="va">path_plot_params_int</span><span class="op">$</span><span class="va">a</span>,</span>
-<span>    hist_binwidth <span class="op">=</span> <span class="fl">0.2</span>, <span class="co"># Adjust as needed</span></span>
-<span>    max_time_to_plot <span class="op">=</span> <span class="fl">5</span></span>
+<span>    trials_data_list <span class="op">=</span> <span class="va">example_trials_list</span>,</span>
+<span>    v_drift <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">v</span>,</span>
+<span>    z_start <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">z</span>,</span>
+<span>    a_threshold <span class="op">=</span> <span class="va">path_plot_params</span><span class="op">$</span><span class="va">a</span>,</span>
+<span>    hist_binwidth <span class="op">=</span> <span class="fl">0.15</span>,</span>
+<span>    max_time_to_plot <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>    main_plot_title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"DDM Simulation: Paths and RT Distributions\n"</span>,</span>
+<span>                           <span class="st">"v ="</span>, <span class="va">path_plot_params</span><span class="op">$</span><span class="va">v</span>, <span class="st">", a ="</span>, <span class="va">path_plot_params</span><span class="op">$</span><span class="va">a</span>,</span>
+<span>                           <span class="st">", z ="</span>, <span class="va">path_plot_params</span><span class="op">$</span><span class="va">z</span>, <span class="st">", s ="</span>, <span class="va">path_plot_params</span><span class="op">$</span><span class="va">s</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Not enough valid trials with diverse outcomes to generate combined plot."</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Not enough valid trials with diverse outcomes to generate combined plot.\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<img src="02_simulating_diffusion_model_files/figure-html/unnamed-chunk-3-1.png" alt="Combined visualization of DDM paths and reaction time distributions, showing how evidence accumulates over time and the resulting distribution of decision times" width="480" style="display: block; margin: auto;">
+<p><img src="02_simulating_diffusion_model_files/figure-html/advanced_path_visualization-1.png" width="960" style="display: block; margin: auto;"></p>
+<p><strong>Interpretation</strong>: - <strong>Central panel</strong>:
+Shows evidence accumulation paths over time - <strong>Upper
+panel</strong>: Distribution of decision times for upper boundary
+choices - <strong>Lower panel</strong>: Distribution of decision times
+for lower boundary choices (flipped) - <strong>Orange line</strong>:
+Expected drift trajectory based on parameter
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math>
+- <strong>Dashed lines</strong>: Decision boundaries and starting
+point</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="practical-applications-and-model-fitting">Practical Applications and Model Fitting<a class="anchor" aria-label="anchor" href="#practical-applications-and-model-fitting"></a>
+</h2>
+<div class="section level3">
+<h3 id="simulating-different-experimental-conditions">Simulating Different Experimental Conditions<a class="anchor" aria-label="anchor" href="#simulating-different-experimental-conditions"></a>
+</h3>
+<p>The DDM can model various experimental manipulations:</p>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2001</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Define different experimental conditions</span></span>
+<span><span class="va">conditions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Easy High Accuracy"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.4</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,    <span class="co"># High drift</span></span>
+<span>  <span class="st">"Hard Low Accuracy"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.1</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,     <span class="co"># Low drift  </span></span>
+<span>  <span class="st">"Speed Emphasis"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">0.8</span>, z <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span>,        <span class="co"># Low threshold</span></span>
+<span>  <span class="st">"Accuracy Emphasis"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">1.4</span>, z <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span>,     <span class="co"># High threshold</span></span>
+<span>  <span class="st">"Response Bias"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fl">0.2</span>, a <span class="op">=</span> <span class="fl">1.0</span>, z <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span>          <span class="co"># Biased start</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Simulate each condition</span></span>
+<span><span class="va">condition_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">condition_data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># For plotting comparisons</span></span>
+<span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">cond_name</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">conditions</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cond_params</span> <span class="op">&lt;-</span> <span class="va">conditions</span><span class="op">[[</span><span class="va">cond_name</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu">simulate_diffusion_experiment</span><span class="op">(</span></span>
+<span>    n_trials <span class="op">=</span> <span class="fl">400</span>,</span>
+<span>    v <span class="op">=</span> <span class="va">cond_params</span><span class="op">$</span><span class="va">v</span>, </span>
+<span>    a <span class="op">=</span> <span class="va">cond_params</span><span class="op">$</span><span class="va">a</span>, </span>
+<span>    z <span class="op">=</span> <span class="va">cond_params</span><span class="op">$</span><span class="va">z</span>,</span>
+<span>    s <span class="op">=</span> <span class="fl">0.3</span>, ter <span class="op">=</span> <span class="fl">0.2</span>, dt <span class="op">=</span> <span class="fl">0.001</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">sim_data</span><span class="op">$</span><span class="va">condition</span> <span class="op">&lt;-</span> <span class="va">cond_name</span></span>
+<span>  <span class="va">condition_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">condition_results</span>, <span class="va">sim_data</span><span class="op">)</span></span>
+<span>  <span class="va">condition_data_list</span><span class="op">[[</span><span class="va">cond_name</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">sim_data</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Remove NA trials and calculate summaries</span></span>
+<span><span class="va">condition_summary</span> <span class="op">&lt;-</span> <span class="va">condition_results</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">condition</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span></span>
+<span>    n_trials <span class="op">=</span> <span class="fu">n</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    accuracy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">choice</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>,  <span class="co"># Assuming upper boundary is "correct"</span></span>
+<span>    mean_rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
+<span>    median_rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,</span>
+<span>    rt_cv <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span>,  <span class="co"># Coefficient of variation</span></span>
+<span>    .groups <span class="op">=</span> <span class="st">'drop'</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">condition_summary</span>, digits <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>             caption <span class="op">=</span> <span class="st">"Simulated Experimental Conditions"</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<caption>Simulated Experimental Conditions</caption>
+<thead><tr class="header">
+<th align="left">condition</th>
+<th align="right">n_trials</th>
+<th align="right">accuracy</th>
+<th align="right">mean_rt</th>
+<th align="right">median_rt</th>
+<th align="right">rt_cv</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Accuracy Emphasis</td>
+<td align="right">320</td>
+<td align="right">0.963</td>
+<td align="right">2.610</td>
+<td align="right">2.597</td>
+<td align="right">0.431</td>
+</tr>
+<tr class="even">
+<td align="left">Easy High Accuracy</td>
+<td align="right">399</td>
+<td align="right">0.987</td>
+<td align="right">1.425</td>
+<td align="right">1.242</td>
+<td align="right">0.512</td>
+</tr>
+<tr class="odd">
+<td align="left">Hard Low Accuracy</td>
+<td align="right">349</td>
+<td align="right">0.759</td>
+<td align="right">2.251</td>
+<td align="right">2.018</td>
+<td align="right">0.519</td>
+</tr>
+<tr class="even">
+<td align="left">Response Bias</td>
+<td align="right">369</td>
+<td align="right">0.775</td>
+<td align="right">2.262</td>
+<td align="right">2.122</td>
+<td align="right">0.509</td>
+</tr>
+<tr class="odd">
+<td align="left">Speed Emphasis</td>
+<td align="right">395</td>
+<td align="right">0.828</td>
+<td align="right">1.556</td>
+<td align="right">1.271</td>
+<td align="right">0.627</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Visualize the speed-accuracy tradeoff</span></span>
+<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">condition_summary</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">mean_rt</span>, y <span class="op">=</span> <span class="va">accuracy</span>, label <span class="op">=</span> <span class="va">condition</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">4</span>, color <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_text</span><span class="op">(</span>vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.8</span>, hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Speed-Accuracy Tradeoff Across Conditions"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Mean RT (s)"</span>, y <span class="op">=</span> <span class="st">"Accuracy"</span>,</span>
+<span>       subtitle <span class="op">=</span> <span class="st">"Each point represents a different experimental condition"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme</span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu">element_text</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">14</span>, face <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/experimental_conditions-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level3">
+<h3 id="comparing-rt-distributions-across-conditions">Comparing RT Distributions Across Conditions<a class="anchor" aria-label="anchor" href="#comparing-rt-distributions-across-conditions"></a>
+</h3>
+<p>Using our utility function for comparing distributions:</p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Use the plotting utility to compare RT distributions</span></span>
+<span><span class="va">rt_comparison_plot</span> <span class="op">&lt;-</span> <span class="fu">plot_rt_comparison</span><span class="op">(</span></span>
+<span>  <span class="va">condition_data_list</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span>,  <span class="co"># Compare first 3 conditions</span></span>
+<span>  plot_type <span class="op">=</span> <span class="st">"density"</span>,</span>
+<span>  facet_by <span class="op">=</span> <span class="st">"condition"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rt_comparison_plot</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/rt_comparison_plot-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level3">
+<h3 id="model-validation-predicted-vs--observed-patterns">Model Validation: Predicted vs. Observed Patterns<a class="anchor" aria-label="anchor" href="#model-validation-predicted-vs--observed-patterns"></a>
+</h3>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Focus on one condition for detailed analysis</span></span>
+<span><span class="va">focus_condition</span> <span class="op">&lt;-</span> <span class="va">condition_results</span> <span class="op">%&gt;%</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">condition</span> <span class="op">==</span> <span class="st">"Easy High Accuracy"</span>, <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Create RT quantile plots (a common DDM validation approach)</span></span>
+<span><span class="va">rt_quantiles</span> <span class="op">&lt;-</span> <span class="va">focus_condition</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">group_by</span><span class="op">(</span><span class="va">choice</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarise</span><span class="op">(</span></span>
+<span>    q10 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">rt</span>, <span class="fl">0.1</span><span class="op">)</span>,</span>
+<span>    q30 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">rt</span>, <span class="fl">0.3</span><span class="op">)</span>, </span>
+<span>    q50 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">rt</span>, <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>    q70 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">rt</span>, <span class="fl">0.7</span><span class="op">)</span>,</span>
+<span>    q90 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">rt</span>, <span class="fl">0.9</span><span class="op">)</span>,</span>
+<span>    .groups <span class="op">=</span> <span class="st">'drop'</span></span>
+<span>  <span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">pivot_longer</span><span class="op">(</span>cols <span class="op">=</span> <span class="va">q10</span><span class="op">:</span><span class="va">q90</span>, names_to <span class="op">=</span> <span class="st">"quantile"</span>, values_to <span class="op">=</span> <span class="st">"rt"</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">mutate</span><span class="op">(</span>quantile_num <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="va">quantile</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fl">100</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">rt_quantiles</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">quantile_num</span>, y <span class="op">=</span> <span class="va">rt</span>, color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">choice</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_point</span><span class="op">(</span>size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_color_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"salmon"</span>, <span class="st">"steelblue"</span><span class="op">)</span>,</span>
+<span>                     labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Lower"</span>, <span class="st">"Upper"</span><span class="op">)</span>, name <span class="op">=</span> <span class="st">"Boundary"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"RT Quantiles by Choice (Model Validation)"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Quantile"</span>, y <span class="op">=</span> <span class="st">"RT (s)"</span>,</span>
+<span>       subtitle <span class="op">=</span> <span class="st">"Shows the characteristic DDM pattern: faster responses for correct choices"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="02_simulating_diffusion_model_files/figure-html/model_validation-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="extensions-and-advanced-topics">Extensions and Advanced Topics<a class="anchor" aria-label="anchor" href="#extensions-and-advanced-topics"></a>
+</h2>
+<p>The basic DDM can be extended in several ways:</p>
+<div class="section level3">
+<h3 id="across-trial-parameter-variability">1. <strong>Across-Trial Parameter Variability</strong><a class="anchor" aria-label="anchor" href="#across-trial-parameter-variability"></a>
+</h3>
+<ul>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>v</mi></mrow><annotation encoding="application/x-tex">sv</annotation></semantics></math>:
+Trial-to-trial drift rate variability</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>z</mi></mrow><annotation encoding="application/x-tex">sz</annotation></semantics></math>:
+Starting point variability<br>
+</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">st</annotation></semantics></math>:
+Non-decision time variability</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="time-varying-parameters">2. <strong>Time-Varying Parameters</strong><a class="anchor" aria-label="anchor" href="#time-varying-parameters"></a>
+</h3>
+<ul>
+<li>Collapsing boundaries:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>a</mi><mn>0</mn></msub><mo>⋅</mo><msup><mi>e</mi><mrow><mi>−</mi><mi>λ</mi><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">a(t) = a_0 \cdot e^{-\lambda t}</annotation></semantics></math>
+</li>
+<li>Time-dependent drift:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>v</mi><mn>0</mn></msub><mo>+</mo><msub><mi>v</mi><mn>1</mn></msub><mo>⋅</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">v(t) = v_0 + v_1 \cdot t</annotation></semantics></math>
+</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="multiple-choice-extensions">3. <strong>Multiple Choice Extensions</strong><a class="anchor" aria-label="anchor" href="#multiple-choice-extensions"></a>
+</h3>
+<ul>
+<li>Racing diffusion models</li>
+<li>Multi-alternative DDMs</li>
+<li>Circular diffusion models</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="neural-implementations">4. <strong>Neural Implementations</strong><a class="anchor" aria-label="anchor" href="#neural-implementations"></a>
+</h3>
+<ul>
+<li>Linking DDM parameters to neural activity</li>
+<li>Hierarchical drift-diffusion models</li>
+<li>Neural DDMs with biophysical constraints</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="available-utility-functions">5. <strong>Available Utility Functions</strong><a class="anchor" aria-label="anchor" href="#available-utility-functions"></a>
+</h3>
+<p>Our enhanced DDM package now provides several utility functions for
+professional analysis:</p>
+<p><strong>Parameter Management:</strong> -
+<code>create_ddm_params()</code>: Create validated parameter sets -
+<code>create_parameter_grid()</code>: Generate systematic parameter
+combinations - <code>validate_ddm_parameters()</code>: Comprehensive
+parameter validation</p>
+<p><strong>Data Analysis:</strong> - <code>summarize_ddm_data()</code>:
+Comprehensive summary statistics - <code>create_summary_table()</code>:
+Formatted tables for reports</p>
+<p><strong>Visualization:</strong> -
+<code>plot_ddm_paths_with_histograms()</code>: Integrated path and RT
+visualization - <code>plot_rt_comparison()</code>: Compare RT
+distributions across conditions - <code>plot_rt_qq()</code>: QQ plots
+for distribution assessment</p>
+<p>These functions make the DDM more accessible for research
+applications and provide professional-quality outputs for publications
+and presentations.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
 </h2>
-<p>This vignette demonstrated the simulation of the Diffusion Decision
-Model using our R functions. We explored the key parameters and observed
-how they influence choice probabilities and the shape of RT
-distributions. The DDM provides a powerful framework for understanding
-the time course of simple decisions.</p>
-<p>Further explorations could involve:</p>
+<p>This vignette demonstrated comprehensive simulation and analysis of
+the Diffusion Decision Model. Key takeaways:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Parameter Effects</strong>: Each DDM parameter has distinct,
+interpretable effects on behavior</li>
+<li>
+<strong>Speed-Accuracy Tradeoff</strong>: The model naturally
+captures this fundamental decision-making phenomenon<br>
+</li>
+<li>
+<strong>RT Distributions</strong>: The DDM predicts characteristic
+right-skewed RT distributions</li>
+<li>
+<strong>Flexibility</strong>: The model can account for various
+experimental manipulations and individual differences</li>
+<li>
+<strong>Professional Tools</strong>: Enhanced utility functions
+provide systematic analysis capabilities</li>
+</ol>
+<div class="section level3">
+<h3 id="what-weve-covered">What We’ve Covered<a class="anchor" aria-label="anchor" href="#what-weve-covered"></a>
+</h3>
 <ul>
-<li><p>Systematically varying each DDM parameter to observe its impact
-(next vignette).</p></li>
-<li><p>Implementing across-trial variability in parameters (e.g., sv,
-sz, st0).</p></li>
-<li><p>Comparing simulated data to empirical data.</p></li>
+<li>
+<strong>Mathematical foundation</strong>: Stochastic differential
+equation underlying the DDM</li>
+<li>
+<strong>Parameter exploration</strong>: Systematic understanding of
+how each parameter affects behavior</li>
+<li>
+<strong>Simulation techniques</strong>: From single trials to full
+experiments with path tracking</li>
+<li>
+<strong>Data analysis</strong>: Comprehensive statistical summaries
+and visualization approaches</li>
+<li>
+<strong>Model validation</strong>: QQ plots, quantile analysis, and
+distribution assessment</li>
+<li>
+<strong>Utility functions</strong>: Professional tools for efficient
+DDM research</li>
 </ul>
+</div>
+<div class="section level3">
+<h3 id="next-steps">Next Steps<a class="anchor" aria-label="anchor" href="#next-steps"></a>
+</h3>
+<p>In subsequent vignettes, we will explore: - <strong>Parameter
+estimation</strong>: Fitting DDM to empirical data - <strong>Model
+comparison</strong>: DDM vs. alternative decision models -
+<strong>Advanced extensions</strong>: Hierarchical and neural DDMs -
+<strong>Real-world applications</strong>: Clinical and cognitive
+assessment</p>
+</div>
+<div class="section level3">
+<h3 id="recommended-readings">Recommended Readings<a class="anchor" aria-label="anchor" href="#recommended-readings"></a>
+</h3>
+<ul>
+<li>Ratcliff, R., &amp; McKoon, G. (2008). The diffusion decision model:
+Theory and data. <em>Neural Computation</em>, 20(4), 873-922.</li>
+<li>Wiecki, T. V., Sofer, I., &amp; Frank, M. J. (2013). HDDM:
+Hierarchical Bayesian estimation of the drift-diffusion model in Python.
+<em>Frontiers in Neuroinformatics</em>, 7, 14.</li>
+<li>Smith, P. L., &amp; Ratcliff, R. (2004). Psychology and neurobiology
+of simple decisions. <em>Trends in Neurosciences</em>, 27(3),
+161-168.</li>
+</ul>
+<hr>
+<p><em>This tutorial provides a foundation for understanding and
+applying the DDM in cognitive research. The simulation approach allows
+researchers to build intuition about the model before applying it to
+empirical data. The enhanced utility functions ensure that your DDM
+analyses are both rigorous and professional.</em></p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

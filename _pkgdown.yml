@@ -16,11 +16,11 @@ articles:
     contents:
       - "01_introduction_to_random_walks"
       - "02_simulating_diffusion_model" 
-      - "03_parameter_variability_in_ddm"
-      - "04_interpreting_ddm_parameters"
+      - "03_parameter_variability"
+      - "04_exploring_ddm_parameters"
+      - "05_mathematical_foundations_of_ddm"
+      - "06_quantile_probability_plots"
       - "shiny_app"
-      # Add your new vignette by adding its file name (without .Rmd extension):
-      # - "05_your_new_vignette_filename"
 
 development:
   mode: auto
