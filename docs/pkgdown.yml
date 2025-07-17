@@ -4,7 +4,9 @@ pkgdown_sha: ~
 articles:
   01_introduction_to_random_walks: 01_introduction_to_random_walks.html
   02_simulating_diffusion_model: 02_simulating_diffusion_model.html
-  03_parameter_variability_in_ddm: 03_parameter_variability_in_ddm.html
-  04_interpreting_ddm_parameters: 04_interpreting_ddm_parameters.html
+  03_parameter_variability: 03_parameter_variability.html
+  04_exploring_ddm_parameters: 04_exploring_ddm_parameters.html
+  05_mathematical_foundations_of_ddm: 05_mathematical_foundations_of_ddm.html
+  06_quantile_probability_plots: 06_quantile_probability_plots.html
   shiny_app: shiny_app.html
-last_built: 2025-05-19T06:11Z
+last_built: 2025-07-17T17:05Z

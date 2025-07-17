@@ -17,13 +17,6 @@ This work is heavily inspired by and aims to replicate concepts from "An Introdu
     *   Understanding DDM parameters (drift rate, threshold, starting point, etc.)
     *   Exploring parameter variability in DDM
 
-
-*   **Shiny App (`local-app/`):**
-    *   Interactive app for exploring DDM parameters and visualizing results
-    *   Published online at: https://dgknzts.shinyapps.io/DDM-Basics/
-    *   Basic demonstration version of the DDM Shiny app for easy local execution
-    *   Simplified version for educational purposes
-
 *   **Documentation Site (`docs/`):**
     *   Generated pkgdown site with tutorials and API reference
 
