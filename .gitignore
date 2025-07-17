@@ -1,13 +1,24 @@
+# R specific files
 .Rproj.user
 .Rhistory
 .Rdata
 .Renviron
-#*.html
+
+# Generated documentation (can be rebuilt)
+docs/
+man/
+
+# Generated package files
+*.tar.gz
+*.Rcheck/
+
+# Image files (except those explicitly needed for tutorials)
 *.pdf
 *.png
-!docs/**/*.png
+!vignettes/**/*.png
 *.jpeg
 *.gif
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -16,8 +27,23 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
-# Data files (if large and not meant to be version controlled)
-# data/*.csv
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*~
+*.swp
+*.tmp
 
 # Publishing related files
 publishing/
+
+# Package build artifacts
+src/*.o
+src/*.so
+src/*.dll
+
+# pkgdown build files (these can be regenerated)
+_pkgdown.yml
