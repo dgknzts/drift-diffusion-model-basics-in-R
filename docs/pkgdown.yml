@@ -9,4 +9,7 @@ articles:
   05_mathematical_foundations_of_ddm: 05_mathematical_foundations_of_ddm.html
   06_quantile_probability_plots: 06_quantile_probability_plots.html
   shiny_app: shiny_app.html
-last_built: 2025-07-17T17:05Z
+last_built: 2025-07-17T17:18Z
+urls:
+  reference: https://dgknzts.github.io/drift-diffusion-model-basics-in-R/reference
+  article: https://dgknzts.github.io/drift-diffusion-model-basics-in-R/articles
