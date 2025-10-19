@@ -47,3 +47,7 @@ src/*.dll
 
 # pkgdown build files (these can be regenerated)
 _pkgdown.yml
+
+# Claude Code related files
+.claude/
+CLAUDE.md

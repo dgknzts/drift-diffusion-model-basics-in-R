@@ -1,0 +1,1442 @@
+---
+title: "Drift Diffusion Model: A Complete Tutorial for Journal Club"
+description: "A comprehensive, step-by-step tutorial on the Drift Diffusion Model for journal club discussions, building from basic concepts to advanced implementations using inline code."
+order: 0
+author: "Dogukan Nami Oztas"
+date: "2025-10-18"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEncoding{UTF-8}
+  %\VignetteIndexEntry{Drift Diffusion Model: A Complete Tutorial for Journal Club}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center',
+  fig.width = 10,
+  fig.height = 6
+)
+
+# Load essential packages only
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Set consistent theme for all plots
+theme_set(theme_minimal(base_size = 12))
+```
+
+# Section 1: Random Walk and Wiener Process Foundations
+
+## Discrete-Time Random Walk
+
+### Mathematical Formulation
+
+$$X_n = X_{n-1} + \epsilon_n$$
+
+where:
+
+\- $X_n$ = position at step $n$
+
+\- $X_0 = 0$ (starting position)
+
+\- $\epsilon_n \sim \mathcal{N}(\mu, \sigma^2)$ (random increment)
+
+```{r pure_random_walk}
+# Pure random walk simulation
+simulate_pure_random_walk <- function(n_steps = 500, mu = 0, sigma = 1) {
+  X <- numeric(n_steps + 1)
+  X[1] <- 0  # Starting position
+  
+  for (i in 2:(n_steps + 1)) {
+    epsilon <- rnorm(1, mean = mu, sd = sigma)
+    X[i] <- X[i-1] + epsilon
+  }
+  
+  return(X)
+}
+
+# Generate multiple random walk paths
+#set.seed(123)
+n_paths <- 5
+walk_data <- data.frame()
+
+for (i in 1:n_paths) {
+  path <- simulate_pure_random_walk(n_steps = 500, mu = 0, sigma = 1)
+  path_df <- data.frame(
+    step = 0:500,
+    position = path,
+    path_id = paste("Path", i)
+  )
+  walk_data <- rbind(walk_data, path_df)
+}
+
+# Plot multiple random walk paths
+ggplot(walk_data, aes(x = step, y = position, color = path_id)) +
+  geom_line(linewidth = 0.8, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+  labs(title = "Random Walks",
+       subtitle = expression(X[n] == X[n-1] + epsilon[n] * ", " * epsilon[n] %~% N(0,1)),
+       x = "Step (n)", 
+       y = expression(X[n])) +
+  theme(legend.position = "none") +
+  scale_color_viridis_d()
+```
+
+## Random Walk with Drift
+
+### Extended Formulation
+
+$$X_n = X_{n-1} + \mu + \epsilon_n$$
+
+where $\mu$ = drift parameter (systematic tendency)
+
+```{r random_walk_with_drift}
+# Random walk with different drift values
+drift_values <- c(-0.25, 0, 0.25)
+drift_data <- data.frame()
+
+#set.seed(456)
+for (drift in drift_values) {
+  path <- simulate_pure_random_walk(n_steps = 500, mu = drift, sigma = 1)
+  path_df <- data.frame(
+    step = 0:500,
+    position = path,
+    drift = paste("μ =", drift)
+  )
+  drift_data <- rbind(drift_data, path_df)
+}
+
+# Plot drift effects
+ggplot(drift_data, aes(x = step, y = position, color = drift)) +
+  geom_line(linewidth = 1) +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+  facet_wrap(~drift, ncol = 3) +
+  labs(title = "Random Walk with Drift",
+       subtitle = expression(X[n] == X[n-1] + mu + epsilon[n]),
+       x = "Step (n)", 
+       y = expression(X[n])) +
+  theme(legend.position = "none") +
+  scale_color_viridis_d()
+```
+
+## Continuous-Time Limit: Wiener Process
+
+### Understanding Infinitesimals
+
+**Why do we need infinitesimals?**
+
+Real processes don't happen in discrete jumps - they evolve
+continuously. Consider:
+
+\- Stock prices change continuously during trading
+
+\- Neural firing rates vary smoothly over time
+
+\- Evidence accumulation happens moment-by-moment
+
+**Mathematical Problem:**
+
+\- Discrete: $X_{n+1} = X_n + \epsilon$ (works at integer time points)
+
+\- Continuous: Need $X(t)$ defined for all real $t$
+
+**The Infinitesimal Solution:** $$dX(t) = \mu \, dt + \sigma \, dW(t)$$
+
+### What does "d" mean?
+
+**"d" = differential = infinitesimal change**
+
+\- $dt$ = tiny change in time (imagine time moving by an impossibly
+small amount)
+
+\- $dX(t)$ = tiny change in position $X$ that happens during this tiny
+time $dt$
+
+\- $dW(t)$ = tiny random "kick" during this tiny time $dt$
+
+### Mathematical Interpretation:
+
+$$dX(t) = X(t + dt) - X(t)$$
+
+**In words:** "The change in $X$ from time $t$ to time $t + dt$"
+
+**Why infinitesimal?** If $dt$ is finite (like 0.1 seconds), we get
+discrete jumps. If $dt \to 0$, we get continuous motion.
+
+### Why W instead of just $\epsilon \cdot dt$?
+
+**Question:** Why not just use $dX(t) = \mu \, dt + \epsilon \, dt$?
+
+**Problem with** $\epsilon \cdot dt$: If noise scales as $dt$, then as
+$dt \to 0$: $$\text{Noise} = \epsilon \cdot dt \to 0$$
+
+**Result:** No randomness left! The process becomes deterministic.
+
+**Solution - Wiener Process** $dW(t)$:
+$$dW(t) = \sqrt{dt} \cdot Z \text{ where } Z \sim \mathcal{N}(0,1)$$
+
+**Why** $\sqrt{dt}$? - As $dt \to 0$: $\sqrt{dt} \to 0$ slower than
+$dt$ - Maintains finite variance: $\text{Var}(dW(t)) = dt$ - Preserves
+randomness in the continuous limit
+
+**Mathematical necessity:**
+$$\frac{\text{Var}(\text{noise})}{\text{time step}} = \frac{dt}{dt} = 1$$
+
+This keeps the "noise per unit time" constant as $dt \to 0$.
+
+### Euler-Maruyama Approximation
+
+Computer implementation uses finite $\Delta t$:
+$$X(t + \Delta t) = X(t) + \mu \cdot \Delta t + \sigma \sqrt{\Delta t} \cdot Z$$
+
+where $Z \sim \mathcal{N}(0,1)$.
+
+```{r wiener_approximation}
+# Approximate Wiener process with decreasing time steps
+simulate_wiener_approximation <- function(T = 1, dt = 0.01, mu = 0, sigma = 1) {
+  n_steps <- round(T / dt)
+  times <- seq(0, T, length.out = n_steps + 1)
+  X <- numeric(n_steps + 1)
+  X[1] <- 0
+  
+  for (i in 2:(n_steps + 1)) {
+    dW <- rnorm(1, mean = 0, sd = sqrt(dt))
+    X[i] <- X[i-1] + mu * dt + sigma * dW
+  }
+  
+  return(data.frame(time = times, position = X))
+}
+
+# Compare different time step sizes
+dt_values <- c(0.1, 0.01, 0.001)
+approximation_data <- data.frame()
+
+#set.seed(789)
+for (dt in dt_values) {
+  wiener_path <- simulate_wiener_approximation(T = 1, dt = dt, mu = 1, sigma = 0.8)
+  wiener_path$dt <- paste("Δt =", dt)
+  approximation_data <- rbind(approximation_data, wiener_path)
+}
+
+# Plot convergence to continuous process
+ggplot(approximation_data, aes(x = time, y = position, color = dt)) +
+  geom_line(linewidth = 0.8) +
+  facet_wrap(~dt, ncol = 3) +
+  labs(
+       x = "Time (t)", 
+       y = "X(t)") +
+  theme(legend.position = "none") +
+  scale_color_viridis_d()
+```
+
+## Why Wiener Process is "Stochastic" and "Differential"
+
+### Discrete vs Continuous Mathematical Framework
+
+**Random Walk (Discrete):** - **Difference equation**:
+$X_n = X_{n-1} + \epsilon_n$ - **Finite increments**:
+$\Delta X = \epsilon_n$ at discrete time points - **Deterministic
+structure**: Well-defined at each integer step $n$
+
+**Wiener Process (Continuous):** - **Stochastic differential equation**:
+$dX(t) = \mu \, dt + \sigma \, dW(t)$ - **Infinitesimal increments**:
+$dX(t)$ over infinitesimal time $dt$ - **Stochastic calculus**: Requires
+Itô calculus for rigorous treatment
+
+### Key Mathematical Distinction
+
+$$\frac{dX}{dt} \text{ does not exist for Wiener process}$$
+
+**Reason**: Wiener process increments scale as $\sqrt{dt}$, making:
+
+$$\lim_{dt \to 0} \frac{dW(t)}{dt} = \lim_{dt \to 0} \frac{\sqrt{dt} \cdot Z}{dt} = \lim_{dt \to 0} \frac{Z}{\sqrt{dt}} = \pm\infty$$
+
+### Summary
+
+Random walks use **difference equations** with finite steps, while
+Wiener processes require **stochastic differential equations** with
+infinitesimal increments that cannot be differentiated in the classical
+sense.
+
+------------------------------------------------------------------------
+
+# Section 2: From Discrete Steps to Continuous Process
+
+## The Problem with Discrete Steps
+
+Our step-by-step approach is intuitive, but it has limitations:
+
+1.  **Arbitrary time units**: What does "one step" represent in real
+    time?
+2.  **Granularity**: Real evidence accumulation might be smoother
+3.  **Mathematical tractability**: Continuous processes have better
+    mathematical properties
+
+## Introducing the Continuous DDM
+
+The Drift Diffusion Model describes evidence accumulation as a
+**continuous process** governed by this equation:
+
+$$dX(t) = v \cdot dt + s \cdot dW(t)$$
+
+Where: - $X(t)$ = evidence at time $t$ - $v$ = drift rate (systematic
+accumulation per unit time) - $s$ = noise intensity (standard deviation
+of random fluctuations) - $dW(t)$ = infinitesimal increment of random
+noise (Wiener process) - $dt$ = infinitesimal time step
+
+## Simulating the Continuous Process
+
+We can't truly simulate continuous time on a computer, but we can
+approximate it using very small time steps. This is called the
+**Euler-Maruyama method**:
+
+```{r continuous_ddm_simulation}
+# Continuous DDM simulation using small time steps
+simulate_ddm_trial <- function(v = 0.1, a = 1.0, z = 0.5, s = 0.1, ter = 0.1, dt = 0.001, max_time = 10) {
+  # Parameters:
+  # v = drift rate
+  # a = threshold separation (decision boundaries at 0 and a)
+  # z = starting point (between 0 and a)
+  # s = noise intensity 
+  # ter = non-decision time (encoding + motor response)
+  # dt = time step for simulation
+  
+  evidence <- z  # Start at starting point
+  time <- 0
+  
+  # Store path for visualization
+  evidence_path <- evidence
+  time_path <- time
+  
+  while (evidence > 0 && evidence < a && time < max_time) {
+    # Euler-Maruyama step: evidence changes by drift*dt + noise*sqrt(dt)*random
+    evidence <- evidence + v * dt + s * sqrt(dt) * rnorm(1)
+    time <- time + dt
+    
+    # Store path (subsample for memory efficiency)
+    if (length(time_path) %% 10 == 0) {  # Store every 10th point
+      evidence_path <- c(evidence_path, evidence)
+      time_path <- c(time_path, time)
+    }
+  }
+  
+  # Determine outcome
+  if (time >= max_time) {
+    choice <- NA
+    rt <- NA
+    decision_time <- NA
+  } else {
+    choice <- ifelse(evidence >= a, 1, 0)  # 1 = upper boundary, 0 = lower boundary
+    decision_time <- time
+    rt <- time + ter  # Add non-decision time
+  }
+  
+  return(list(
+    choice = choice,
+    rt = rt,
+    decision_time = decision_time,
+    evidence_path = evidence_path,
+    time_path = time_path,
+    final_evidence = evidence
+  ))
+}
+
+# Demonstrate the continuous DDM
+set.seed(789)
+
+# Different parameter combinations
+ddm_examples <- list(
+  "Standard" = simulate_ddm_trial(v = 0.2, a = 1.0, z = 0.5, s = 0.3),
+  "High Drift" = simulate_ddm_trial(v = 0.5, a = 1.0, z = 0.5, s = 0.3),
+  "Biased Start" = simulate_ddm_trial(v = 0.2, a = 1.0, z = 0.3, s = 0.3),
+  "Conservative" = simulate_ddm_trial(v = 0.2, a = 1.5, z = 0.75, s = 0.3)
+)
+
+# Plot the continuous DDM examples
+plot_ddm_examples <- function(examples_list) {
+  all_data <- data.frame()
+  
+  for (i in 1:length(examples_list)) {
+    example_name <- names(examples_list)[i]
+    example_data <- examples_list[[i]]
+    
+    example_df <- data.frame(
+      time = example_data$time_path,
+      evidence = example_data$evidence_path,
+      condition = example_name,
+      choice = example_data$choice,
+      rt = example_data$rt
+    )
+    all_data <- rbind(all_data, example_df)
+  }
+  
+  ggplot(all_data, aes(x = time, y = evidence, color = condition)) +
+    geom_line(linewidth = 1) +
+    geom_hline(yintercept = c(0, 1), linetype = "dashed", color = "red", linewidth = 1) +
+    geom_hline(yintercept = 0.5, linetype = "dotted", color = "gray", linewidth = 1) +
+    facet_wrap(~condition, scales = "free", ncol = 2) +
+    labs(title = "Continuous DDM: Evidence Accumulation Over Real Time",
+         subtitle = "Evidence accumulates continuously until crossing decision boundaries",
+         x = "Time (seconds)", 
+         y = "Evidence Level",
+         caption = "Red dashed lines = decision boundaries, Gray dotted line = starting point") +
+    theme(legend.position = "none") +
+    annotate("text", x = Inf, y = 1.05, label = "Upper Boundary", hjust = 1, size = 3, color = "red") +
+    annotate("text", x = Inf, y = -0.05, label = "Lower Boundary", hjust = 1, size = 3, color = "red")
+}
+
+plot_ddm_examples(ddm_examples)
+```
+
+**Key Differences from Discrete Model:**
+
+1.  **Real time units**: Time is now in seconds, not arbitrary steps
+2.  **Smooth paths**: Evidence changes smoothly over time
+3.  **Proper scaling**: Noise scales with $\sqrt{dt}$ (mathematical
+    requirement)
+4.  **Flexible boundaries**: Can use any values for thresholds
+
+------------------------------------------------------------------------
+
+# Section 3: Understanding DDM Parameters
+
+Each DDM parameter has a specific psychological interpretation. Let's
+build intuition for each one by implementing and visualizing their
+effects.
+
+## Parameter 1: Drift Rate (v) - The Quality of Evidence
+
+**Drift rate** represents the average rate of evidence accumulation per
+unit time. Higher drift rates mean: - Stronger, clearer evidence -
+Better stimulus quality - Less ambiguous decisions
+
+```{r drift_rate_exploration}
+# Systematic exploration of drift rate effects
+explore_drift_rate <- function(drift_values = c(-0.3, -0.1, 0, 0.1, 0.3), n_trials = 500) {
+  results <- data.frame()
+  
+  for (v in drift_values) {
+    cat(sprintf("Simulating v = %.2f...\n", v))
+    
+    # Simulate many trials for this drift rate
+    trial_results <- replicate(n_trials, {
+      trial <- simulate_ddm_trial(v = v, a = 1.0, z = 0.5, s = 0.3, ter = 0.1)
+      c(choice = trial$choice, rt = trial$rt)
+    }, simplify = FALSE)
+    
+    # Extract results
+    choices <- sapply(trial_results, function(x) x[1])
+    rts <- sapply(trial_results, function(x) x[2])
+    
+    # Remove NA trials
+    valid_trials <- !is.na(choices) & !is.na(rts)
+    choices <- choices[valid_trials]
+    rts <- rts[valid_trials]
+    
+    if (length(choices) > 0) {
+      trial_data <- data.frame(
+        drift_rate = v,
+        choice = choices,
+        rt = rts,
+        accuracy = mean(choices == 1)  # Assuming upper boundary is "correct"
+      )
+      results <- rbind(results, trial_data)
+    }
+  }
+  
+  return(results)
+}
+
+# Run the exploration
+set.seed(101)
+drift_results <- explore_drift_rate()
+
+# Create comprehensive visualization
+p1 <- drift_results %>%
+  group_by(drift_rate) %>%
+  summarise(accuracy = mean(choice == 1), .groups = 'drop') %>%
+  ggplot(aes(x = drift_rate, y = accuracy)) +
+  geom_point(size = 4, color = "steelblue") +
+  geom_line(linewidth = 1, color = "steelblue") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  labs(title = "Choice Probability vs Drift Rate",
+       subtitle = "Higher drift rates increase probability of upper boundary choice",
+       x = "Drift Rate (v)", 
+       y = "P(Upper Boundary)") +
+  scale_y_continuous(limits = c(0, 1))
+
+p2 <- drift_results %>%
+  group_by(drift_rate, choice) %>%
+  summarise(mean_rt = mean(rt), .groups = 'drop') %>%
+  ggplot(aes(x = drift_rate, y = mean_rt, color = factor(choice))) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("0" = "salmon", "1" = "steelblue"),
+                     labels = c("Lower", "Upper"),
+                     name = "Boundary") +
+  labs(title = "Mean RT vs Drift Rate",
+       subtitle = "Faster RTs for choices in direction of drift",
+       x = "Drift Rate (v)", 
+       y = "Mean RT (seconds)")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+**Interpretation:** - **Positive drift** → higher probability of upper
+boundary choice - **Negative drift** → higher probability of lower
+boundary choice\
+- **Zero drift** → equal probability of either choice (pure random
+walk) - **Higher \|drift\|** → faster reaction times, especially for
+favored choice
+
+## Parameter 2: Threshold Separation (a) - Speed vs Accuracy
+
+**Threshold separation** controls the fundamental speed-accuracy
+tradeoff:
+
+```{r threshold_exploration}
+# Explore threshold effects
+explore_threshold <- function(threshold_values = c(0.5, 0.8, 1.0, 1.2, 1.5), n_trials = 400) {
+  results <- data.frame()
+  
+  for (a in threshold_values) {
+    cat(sprintf("Simulating a = %.2f...\n", a))
+    
+    # Simulate trials
+    trial_results <- replicate(n_trials, {
+      trial <- simulate_ddm_trial(v = 0.2, a = a, z = a/2, s = 0.3, ter = 0.1)  # Keep z proportional
+      c(choice = trial$choice, rt = trial$rt)
+    }, simplify = FALSE)
+    
+    # Extract valid results
+    choices <- sapply(trial_results, function(x) x[1])
+    rts <- sapply(trial_results, function(x) x[2])
+    valid_trials <- !is.na(choices) & !is.na(rts)
+    
+    if (sum(valid_trials) > 0) {
+      choices <- choices[valid_trials]
+      rts <- rts[valid_trials]
+      
+      trial_data <- data.frame(
+        threshold = a,
+        choice = choices,
+        rt = rts,
+        accuracy = mean(choices == 1)  # Positive drift favors upper boundary
+      )
+      results <- rbind(results, trial_data)
+    }
+  }
+  
+  return(results)
+}
+
+set.seed(202)
+threshold_results <- explore_threshold()
+
+# Visualize speed-accuracy tradeoff
+speed_accuracy_data <- threshold_results %>%
+  group_by(threshold) %>%
+  summarise(
+    accuracy = mean(choice == 1),
+    mean_rt = mean(rt),
+    .groups = 'drop'
+  )
+
+ggplot(speed_accuracy_data, aes(x = mean_rt, y = accuracy)) +
+  geom_point(size = 4, color = "darkgreen") +
+  geom_path(linewidth = 1, color = "darkgreen") +
+  geom_text(aes(label = sprintf("a=%.1f", threshold)), 
+            vjust = -0.5, hjust = 0.5, size = 3) +
+  labs(title = "Speed-Accuracy Tradeoff: The Fundamental DDM Prediction",
+       subtitle = "Higher thresholds = slower but more accurate decisions",
+       x = "Mean Reaction Time (seconds)", 
+       y = "Accuracy") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"))
+```
+
+**The Speed-Accuracy Tradeoff:** - **Higher thresholds** → more evidence
+required → slower but more accurate - **Lower thresholds** → less
+evidence required → faster but less accurate - This tradeoff is
+fundamental to human decision making!
+
+## Parameter 3: Starting Point (z) - Response Bias
+
+**Starting point** determines initial bias toward one option:
+
+```{r starting_point_exploration}
+# Explore starting point bias effects
+explore_starting_point <- function(z_proportions = c(0.2, 0.3, 0.5, 0.7, 0.8), n_trials = 400) {
+  a <- 1.0  # Fixed threshold
+  results <- data.frame()
+  
+  for (z_prop in z_proportions) {
+    z <- z_prop * a  # Convert proportion to absolute starting point
+    
+    # Simulate trials with zero drift to isolate bias effects
+    trial_results <- replicate(n_trials, {
+      trial <- simulate_ddm_trial(v = 0, a = a, z = z, s = 0.3, ter = 0.1)
+      c(choice = trial$choice, rt = trial$rt)
+    }, simplify = FALSE)
+    
+    # Extract valid results
+    choices <- sapply(trial_results, function(x) x[1])
+    rts <- sapply(trial_results, function(x) x[2])
+    valid_trials <- !is.na(choices) & !is.na(rts)
+    
+    if (sum(valid_trials) > 0) {
+      choices <- choices[valid_trials]
+      rts <- rts[valid_trials]
+      
+      trial_data <- data.frame(
+        z_proportion = z_prop,
+        starting_point = z,
+        choice = choices,
+        rt = rts,
+        prop_upper = mean(choices == 1)
+      )
+      results <- rbind(results, trial_data)
+    }
+  }
+  
+  return(results)
+}
+
+set.seed(303)
+bias_results <- explore_starting_point()
+
+# Visualize bias effects
+bias_summary <- bias_results %>%
+  group_by(z_proportion, starting_point) %>%
+  summarise(
+    prop_upper = mean(choice == 1),
+    mean_rt = mean(rt),
+    .groups = 'drop'
+  )
+
+p1 <- ggplot(bias_summary, aes(x = z_proportion, y = prop_upper)) +
+  geom_point(size = 4, color = "purple") +
+  geom_line(linewidth = 1, color = "purple") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray") +
+  labs(title = "Response Bias: Starting Point Effects",
+       subtitle = "Starting point creates bias even with zero drift",
+       x = "Starting Point (proportion of threshold)", 
+       y = "P(Upper Boundary)") +
+  scale_x_continuous(breaks = seq(0.2, 0.8, 0.1))
+
+p2 <- bias_results %>%
+  ggplot(aes(x = z_proportion, y = rt, fill = factor(choice))) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_manual(values = c("0" = "salmon", "1" = "steelblue"),
+                    labels = c("Lower", "Upper"),
+                    name = "Choice") +
+  labs(title = "RT by Starting Point and Choice",
+       subtitle = "Faster RTs for boundary closer to starting point",
+       x = "Starting Point (proportion of threshold)", 
+       y = "Reaction Time (seconds)")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+**Starting Point Insights:** - **z = a/2** → unbiased (equal probability
+of either choice) - **z \> a/2** → bias toward upper boundary - **z \<
+a/2** → bias toward lower boundary - **Closer to boundary** → faster RTs
+for that choice
+
+## Parameter 4: Noise Intensity (s) - Process Variability
+
+**Noise intensity** affects the variability of the decision process:
+
+```{r noise_exploration}
+# Explore noise effects on decision variability
+explore_noise <- function(noise_values = c(0.1, 0.2, 0.3, 0.4, 0.5), n_trials = 300) {
+  results <- data.frame()
+  
+  for (s in noise_values) {
+    # Simulate trials
+    trial_results <- replicate(n_trials, {
+      trial <- simulate_ddm_trial(v = 0.15, a = 1.0, z = 0.5, s = s, ter = 0.1)
+      c(choice = trial$choice, rt = trial$rt)
+    }, simplify = FALSE)
+    
+    # Extract valid results
+    choices <- sapply(trial_results, function(x) x[1])
+    rts <- sapply(trial_results, function(x) x[2])
+    valid_trials <- !is.na(choices) & !is.na(rts)
+    
+    if (sum(valid_trials) > 0) {
+      choices <- choices[valid_trials]
+      rts <- rts[valid_trials]
+      
+      trial_data <- data.frame(
+        noise = s,
+        choice = choices,
+        rt = rts
+      )
+      results <- rbind(results, trial_data)
+    }
+  }
+  
+  return(results)
+}
+
+set.seed(404)
+noise_results <- explore_noise()
+
+# Visualize noise effects on RT variability
+noise_summary <- noise_results %>%
+  group_by(noise) %>%
+  summarise(
+    mean_rt = mean(rt),
+    sd_rt = sd(rt),
+    cv_rt = sd(rt) / mean(rt),  # Coefficient of variation
+    accuracy = mean(choice == 1),
+    .groups = 'drop'
+  )
+
+p1 <- ggplot(noise_summary, aes(x = noise, y = cv_rt)) +
+  geom_point(size = 4, color = "orange") +
+  geom_line(linewidth = 1, color = "orange") +
+  labs(title = "Noise Effects on RT Variability",
+       subtitle = "Higher noise increases RT variability",
+       x = "Noise Intensity (s)", 
+       y = "RT Coefficient of Variation")
+
+p2 <- ggplot(noise_summary, aes(x = noise, y = accuracy)) +
+  geom_point(size = 4, color = "red") +
+  geom_line(linewidth = 1, color = "red") +
+  labs(title = "Noise Effects on Accuracy",
+       subtitle = "Higher noise can reduce accuracy",
+       x = "Noise Intensity (s)", 
+       y = "Accuracy")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+**Noise Effects:** - **Higher noise** → more variable RTs - **Higher
+noise** → potentially lower accuracy (noise competes with drift) -
+**Noise is necessary** → without it, RT would be deterministic!
+
+------------------------------------------------------------------------
+
+# Section 4: Building a Complete DDM Experiment
+
+Now let's implement a complete DDM experiment from scratch, bringing
+together all parameters:
+
+```{r complete_ddm_experiment}
+# Complete DDM experiment simulator
+run_ddm_experiment <- function(conditions, n_trials_per_condition = 500) {
+  all_results <- data.frame()
+  
+  for (i in 1:nrow(conditions)) {
+    condition <- conditions[i, ]
+    condition_name <- rownames(conditions)[i]
+    
+    cat(sprintf("Running condition: %s\n", condition_name))
+    
+    # Simulate trials for this condition
+    trial_results <- replicate(n_trials_per_condition, {
+      trial <- simulate_ddm_trial(
+        v = condition$v,
+        a = condition$a, 
+        z = condition$z,
+        s = condition$s,
+        ter = condition$ter
+      )
+      c(choice = trial$choice, rt = trial$rt, decision_time = trial$decision_time)
+    }, simplify = FALSE)
+    
+    # Extract results
+    choices <- sapply(trial_results, function(x) x[1])
+    rts <- sapply(trial_results, function(x) x[2])
+    decision_times <- sapply(trial_results, function(x) x[3])
+    
+    # Keep only valid trials
+    valid_trials <- !is.na(choices) & !is.na(rts)
+    
+    if (sum(valid_trials) > 0) {
+      condition_data <- data.frame(
+        condition = condition_name,
+        trial = 1:sum(valid_trials),
+        choice = choices[valid_trials],
+        rt = rts[valid_trials],
+        decision_time = decision_times[valid_trials],
+        v = condition$v,
+        a = condition$a,
+        z = condition$z,
+        s = condition$s,
+        ter = condition$ter
+      )
+      all_results <- rbind(all_results, condition_data)
+    }
+  }
+  
+  return(all_results)
+}
+
+# Define experimental conditions
+experimental_conditions <- data.frame(
+  v = c(0.1, 0.3, 0.1, 0.2),
+  a = c(1.0, 1.0, 1.5, 0.8),
+  z = c(0.5, 0.5, 0.75, 0.4),
+  s = c(0.3, 0.3, 0.3, 0.3),
+  ter = c(0.15, 0.15, 0.15, 0.15)
+)
+rownames(experimental_conditions) <- c("Easy_Unbiased", "Easy_Biased", "Hard_Conservative", "Fast_Biased")
+
+# Run the experiment
+set.seed(505)
+experiment_results <- run_ddm_experiment(experimental_conditions, n_trials_per_condition = 400)
+
+# Analyze results
+condition_summary <- experiment_results %>%
+  group_by(condition) %>%
+  summarise(
+    n_trials = n(),
+    accuracy = mean(choice == 1),
+    mean_rt = mean(rt),
+    median_rt = median(rt),
+    sd_rt = sd(rt),
+    mean_decision_time = mean(decision_time),
+    .groups = 'drop'
+  )
+
+knitr::kable(condition_summary, digits = 3, 
+             caption = "DDM Experiment Results: Four Different Conditions")
+```
+
+## Visualizing Experimental Results
+
+```{r experiment_visualization}
+# RT distributions by condition
+p1 <- experiment_results %>%
+  ggplot(aes(x = rt, fill = condition)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  facet_wrap(~condition, scales = "free_y") +
+  labs(title = "RT Distributions Across Conditions",
+       x = "Reaction Time (seconds)", y = "Frequency") +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d()
+
+# Choice proportions
+p2 <- experiment_results %>%
+  group_by(condition, choice) %>%
+  count() %>%
+  group_by(condition) %>%
+  mutate(proportion = n / sum(n)) %>%
+  ggplot(aes(x = condition, y = proportion, fill = factor(choice))) +
+  geom_col(position = "stack", alpha = 0.8) +
+  scale_fill_manual(values = c("0" = "salmon", "1" = "steelblue"),
+                    labels = c("Lower", "Upper"), name = "Boundary") +
+  labs(title = "Choice Proportions by Condition",
+       x = "Condition", y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Speed-accuracy relationship
+p3 <- condition_summary %>%
+  ggplot(aes(x = mean_rt, y = accuracy, label = condition)) +
+  geom_point(size = 4, color = "darkblue") +
+  geom_text(vjust = -0.8, size = 3) +
+  labs(title = "Speed-Accuracy Tradeoff Across Conditions",
+       x = "Mean RT (seconds)", y = "Accuracy") +
+  xlim(0.4, 1.2) + ylim(0.5, 1.0)
+
+gridExtra::grid.arrange(p1, gridExtra::arrangeGrob(p2, p3, ncol = 2), ncol = 1, heights = c(2, 1))
+```
+
+------------------------------------------------------------------------
+
+# Section 5: Model Validation and Parameter Recovery
+
+A critical aspect of working with the DDM is understanding whether our
+simulations correctly implement the model. Let's validate against known
+analytical results:
+
+```{r model_validation}
+# Analytical solution for choice probability (from Feller, 1968)
+analytical_choice_probability <- function(v, a, z, s) {
+  if (abs(v) < 1e-8) {  # When drift is essentially zero
+    return(z / a)
+  } else {
+    numerator <- 1 - exp(-2 * v * z / (s^2))
+    denominator <- 1 - exp(-2 * v * a / (s^2))
+    return(numerator / denominator)
+  }
+}
+
+# Test our simulation against analytical predictions
+validation_test <- function(n_trials = 2000) {
+  test_conditions <- expand.grid(
+    v = c(-0.2, 0, 0.1, 0.3),
+    z_prop = c(0.3, 0.5, 0.7)
+  )
+  test_conditions$a <- 1.0
+  test_conditions$z <- test_conditions$z_prop * test_conditions$a
+  test_conditions$s <- 0.4
+  
+  validation_results <- data.frame()
+  
+  for (i in 1:nrow(test_conditions)) {
+    params <- test_conditions[i, ]
+    
+    # Analytical prediction
+    p_analytical <- analytical_choice_probability(params$v, params$a, params$z, params$s)
+    
+    # Simulation
+    sim_trials <- replicate(n_trials, {
+      trial <- simulate_ddm_trial(v = params$v, a = params$a, z = params$z, 
+                                 s = params$s, ter = 0)
+      trial$choice
+    })
+    
+    p_simulated <- mean(sim_trials == 1, na.rm = TRUE)
+    se_simulated <- sqrt(p_simulated * (1 - p_simulated) / sum(!is.na(sim_trials)))
+    
+    validation_results <- rbind(validation_results, data.frame(
+      v = params$v,
+      z_prop = params$z_prop,
+      p_analytical = p_analytical,
+      p_simulated = p_simulated,
+      se_simulated = se_simulated,
+      difference = p_simulated - p_analytical
+    ))
+  }
+  
+  return(validation_results)
+}
+
+# Run validation
+set.seed(606)
+validation_data <- validation_test(n_trials = 1500)
+
+# Visualize validation results
+ggplot(validation_data, aes(x = p_analytical, y = p_simulated)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_point(aes(color = factor(v)), size = 3) +
+  geom_errorbar(aes(ymin = p_simulated - 2*se_simulated, 
+                   ymax = p_simulated + 2*se_simulated), 
+               width = 0.01, alpha = 0.7) +
+  scale_color_viridis_d(name = "Drift (v)") +
+  labs(title = "Model Validation: Analytical vs Simulated Choice Probabilities",
+       subtitle = "Points should fall on the diagonal line (perfect agreement)",
+       x = "Analytical Prediction", 
+       y = "Simulation Result") +
+  coord_equal() +
+  theme_minimal()
+
+# Summary statistics
+cat("Validation Summary:\n")
+cat(sprintf("Mean absolute difference: %.4f\n", mean(abs(validation_data$difference))))
+cat(sprintf("Max absolute difference: %.4f\n", max(abs(validation_data$difference))))
+cat(sprintf("All differences within 2 SE: %s\n", 
+            all(abs(validation_data$difference) < 2*validation_data$se_simulated)))
+```
+
+**Validation Results:** Our simulation should closely match analytical
+predictions, confirming that our implementation is correct.
+
+------------------------------------------------------------------------
+
+# Section 6: Advanced Topics and Extensions
+
+## 1. Parameter Variability Across Trials
+
+Real decision making involves trial-to-trial variability in parameters:
+
+```{r parameter_variability}
+# DDM with across-trial parameter variability
+simulate_ddm_with_variability <- function(v, a, z, s, ter, 
+                                        sv = 0, sz = 0, st0 = 0,
+                                        dt = 0.001, max_time = 10) {
+  # Sample trial-specific parameters
+  v_trial <- rnorm(1, v, sv)
+  z_trial <- rnorm(1, z, sz)
+  z_trial <- max(0.01, min(a - 0.01, z_trial))  # Keep within bounds
+  ter_trial <- max(0, rnorm(1, ter, st0))
+  
+  # Run standard DDM with trial-specific parameters
+  evidence <- z_trial
+  time <- 0
+  
+  while (evidence > 0 && evidence < a && time < max_time) {
+    evidence <- evidence + v_trial * dt + s * sqrt(dt) * rnorm(1)
+    time <- time + dt
+  }
+  
+  if (time >= max_time) {
+    choice <- NA
+    rt <- NA
+  } else {
+    choice <- ifelse(evidence >= a, 1, 0)
+    rt <- time + ter_trial
+  }
+  
+  return(list(choice = choice, rt = rt, v_trial = v_trial, z_trial = z_trial, ter_trial = ter_trial))
+}
+
+# Compare models with and without variability
+compare_variability <- function(n_trials = 500) {
+  # Standard DDM
+  standard_results <- replicate(n_trials, {
+    trial <- simulate_ddm_trial(v = 0.2, a = 1.0, z = 0.5, s = 0.3, ter = 0.15)
+    c(choice = trial$choice, rt = trial$rt)
+  }, simplify = FALSE)
+  
+  # DDM with variability
+  variable_results <- replicate(n_trials, {
+    trial <- simulate_ddm_with_variability(v = 0.2, a = 1.0, z = 0.5, s = 0.3, ter = 0.15,
+                                         sv = 0.1, sz = 0.05, st0 = 0.03)
+    c(choice = trial$choice, rt = trial$rt)
+  }, simplify = FALSE)
+  
+  # Extract data
+  standard_data <- data.frame(
+    model = "Standard DDM",
+    choice = sapply(standard_results, function(x) x[1]),
+    rt = sapply(standard_results, function(x) x[2])
+  )
+  
+  variable_data <- data.frame(
+    model = "DDM with Variability",
+    choice = sapply(variable_results, function(x) x[1]),
+    rt = sapply(variable_results, function(x) x[2])
+  )
+  
+  # Combine and remove NAs
+  all_data <- rbind(standard_data, variable_data)
+  all_data <- all_data[!is.na(all_data$choice) & !is.na(all_data$rt), ]
+  
+  return(all_data)
+}
+
+set.seed(707)
+variability_comparison <- compare_variability()
+
+# Visualize the effects of parameter variability
+ggplot(variability_comparison, aes(x = rt, fill = model)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  facet_wrap(~model, scales = "free_y") +
+  labs(title = "Effect of Across-Trial Parameter Variability",
+       subtitle = "Variability creates more realistic, broader RT distributions",
+       x = "Reaction Time (seconds)", y = "Frequency") +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = c("Standard DDM" = "lightblue", "DDM with Variability" = "salmon"))
+```
+
+## 2. Model Fitting Concepts
+
+In practice, we fit DDM parameters to empirical data:
+
+```{r model_fitting_concepts}
+# Simulate "empirical" data from known parameters
+true_parameters <- list(v = 0.25, a = 1.2, z = 0.6, s = 0.3, ter = 0.18)
+
+# Generate synthetic data
+set.seed(808)
+empirical_data <- replicate(800, {
+  trial <- simulate_ddm_trial(
+    v = true_parameters$v,
+    a = true_parameters$a,
+    z = true_parameters$z,
+    s = true_parameters$s,
+    ter = true_parameters$ter
+  )
+  c(choice = trial$choice, rt = trial$rt)
+}, simplify = FALSE)
+
+# Extract valid trials
+empirical_choices <- sapply(empirical_data, function(x) x[1])
+empirical_rts <- sapply(empirical_data, function(x) x[2])
+valid_trials <- !is.na(empirical_choices) & !is.na(empirical_rts)
+
+empirical_df <- data.frame(
+  choice = empirical_choices[valid_trials],
+  rt = empirical_rts[valid_trials]
+)
+
+# Analyze the "empirical" data
+empirical_summary <- empirical_df %>%
+  group_by(choice) %>%
+  summarise(
+    n = n(),
+    mean_rt = mean(rt),
+    median_rt = median(rt),
+    q10 = quantile(rt, 0.1),
+    q90 = quantile(rt, 0.9),
+    .groups = 'drop'
+  )
+
+knitr::kable(empirical_summary, digits = 3, 
+             caption = "Summary of 'Empirical' Data Generated from Known DDM Parameters")
+
+# Visualize empirical data patterns
+p1 <- ggplot(empirical_df, aes(x = rt, fill = factor(choice))) +
+  geom_histogram(bins = 30, alpha = 0.7) +
+  facet_wrap(~factor(choice, labels = c("Lower Boundary", "Upper Boundary"))) +
+  scale_fill_manual(values = c("salmon", "steelblue")) +
+  labs(title = "Empirical RT Distributions",
+       x = "RT (seconds)", y = "Frequency") +
+  theme(legend.position = "none")
+
+# RT quantiles (classic DDM analysis)
+rt_quantiles <- empirical_df %>%
+  group_by(choice) %>%
+  summarise(
+    q10 = quantile(rt, 0.1),
+    q30 = quantile(rt, 0.3),
+    q50 = quantile(rt, 0.5),
+    q70 = quantile(rt, 0.7),
+    q90 = quantile(rt, 0.9),
+    .groups = 'drop'
+  ) %>%
+  pivot_longer(cols = q10:q90, names_to = "quantile", values_to = "rt") %>%
+  mutate(quantile_num = as.numeric(substr(quantile, 2, 3)) / 100)
+
+p2 <- ggplot(rt_quantiles, aes(x = quantile_num, y = rt, color = factor(choice))) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("salmon", "steelblue"),
+                     labels = c("Lower", "Upper"), name = "Boundary") +
+  labs(title = "RT Quantile Functions",
+       x = "Quantile", y = "RT (seconds)")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+**Model Fitting Process:** 1. **Collect empirical data** (choices and
+RTs) 2. **Define parameter space** (reasonable ranges for v, a, z, etc.)
+3. **Optimization**: Find parameters that best match empirical patterns
+4. **Validation**: Check model predictions against data
+
+------------------------------------------------------------------------
+
+# Section 7: Practical Applications and Real-World Examples
+
+## Clinical Applications
+
+The DDM has important applications in clinical research:
+
+```{r clinical_applications}
+# Simulate different clinical populations
+simulate_clinical_populations <- function(n_subjects = 20, n_trials_per_subject = 100) {
+  populations <- list(
+    "Healthy Controls" = list(v = 0.3, a = 1.0, z = 0.5, s = 0.3, ter = 0.15),
+    "ADHD" = list(v = 0.25, a = 0.8, z = 0.45, s = 0.35, ter = 0.20),  # Lower threshold, higher noise
+    "Depression" = list(v = 0.2, a = 1.2, z = 0.45, s = 0.3, ter = 0.25)  # Conservative, slower
+  )
+  
+  all_data <- data.frame()
+  
+  for (pop_name in names(populations)) {
+    params <- populations[[pop_name]]
+    
+    for (subject in 1:n_subjects) {
+      # Add individual differences
+      subject_params <- list(
+        v = rnorm(1, params$v, 0.05),
+        a = max(0.5, rnorm(1, params$a, 0.1)),
+        z = rnorm(1, params$z, 0.02),
+        s = params$s,
+        ter = max(0.05, rnorm(1, params$ter, 0.03))
+      )
+      subject_params$z <- max(0.1, min(subject_params$a - 0.1, subject_params$z))
+      
+      # Simulate trials for this subject
+      subject_trials <- replicate(n_trials_per_subject, {
+        trial <- simulate_ddm_trial(
+          v = subject_params$v,
+          a = subject_params$a,
+          z = subject_params$z,
+          s = subject_params$s,
+          ter = subject_params$ter
+        )
+        c(choice = trial$choice, rt = trial$rt)
+      }, simplify = FALSE)
+      
+      # Extract valid trials
+      choices <- sapply(subject_trials, function(x) x[1])
+      rts <- sapply(subject_trials, function(x) x[2])
+      valid <- !is.na(choices) & !is.na(rts)
+      
+      if (sum(valid) > 0) {
+        subject_data <- data.frame(
+          population = pop_name,
+          subject = paste(pop_name, subject, sep = "_"),
+          choice = choices[valid],
+          rt = rts[valid]
+        )
+        all_data <- rbind(all_data, subject_data)
+      }
+    }
+  }
+  
+  return(all_data)
+}
+
+# Generate clinical data
+set.seed(909)
+clinical_data <- simulate_clinical_populations()
+
+# Analyze population differences
+population_summary <- clinical_data %>%
+  group_by(population, subject) %>%
+  summarise(
+    accuracy = mean(choice == 1),
+    mean_rt = mean(rt),
+    .groups = 'keep'
+  ) %>%
+  group_by(population) %>%
+  summarise(
+    n_subjects = n(),
+    mean_accuracy = mean(accuracy),
+    se_accuracy = sd(accuracy) / sqrt(n()),
+    mean_rt = mean(mean_rt),
+    se_rt = sd(mean_rt) / sqrt(n()),
+    .groups = 'drop'
+  )
+
+knitr::kable(population_summary, digits = 3, 
+             caption = "Simulated Clinical Population Differences")
+
+# Visualize population differences
+p1 <- clinical_data %>%
+  group_by(population, subject) %>%
+  summarise(accuracy = mean(choice == 1), .groups = 'keep') %>%
+  ggplot(aes(x = population, y = accuracy, fill = population)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Accuracy Across Clinical Populations",
+       x = "Population", y = "Accuracy") +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d()
+
+p2 <- clinical_data %>%
+  group_by(population, subject) %>%
+  summarise(mean_rt = mean(rt), .groups = 'keep') %>%
+  ggplot(aes(x = population, y = mean_rt, fill = population)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Mean RT Across Clinical Populations",
+       x = "Population", y = "Mean RT (seconds)") +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d()
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+## Cognitive Aging Research
+
+```{r aging_research}
+# Simulate age-related changes in DDM parameters
+simulate_aging_effects <- function() {
+  ages <- seq(20, 80, by = 10)
+  age_data <- data.frame()
+  
+  for (age in ages) {
+    # Age-related parameter changes (based on literature)
+    v_age <- 0.4 - (age - 20) * 0.003  # Declining drift rate
+    a_age <- 1.0 + (age - 20) * 0.008  # Increasing caution
+    ter_age <- 0.15 + (age - 20) * 0.002  # Slower processing
+    
+    # Simulate trials
+    age_trials <- replicate(200, {
+      trial <- simulate_ddm_trial(v = v_age, a = a_age, z = a_age/2, 
+                                 s = 0.3, ter = ter_age)
+      c(choice = trial$choice, rt = trial$rt)
+    }, simplify = FALSE)
+    
+    # Extract results
+    choices <- sapply(age_trials, function(x) x[1])
+    rts <- sapply(age_trials, function(x) x[2])
+    valid <- !is.na(choices) & !is.na(rts)
+    
+    if (sum(valid) > 0) {
+      age_df <- data.frame(
+        age = age,
+        accuracy = mean(choices[valid] == 1),
+        mean_rt = mean(rts[valid]),
+        v_param = v_age,
+        a_param = a_age,
+        ter_param = ter_age
+      )
+      age_data <- rbind(age_data, age_df)
+    }
+  }
+  
+  return(age_data)
+}
+
+set.seed(1010)
+aging_data <- simulate_aging_effects()
+
+# Visualize aging effects
+p1 <- ggplot(aging_data, aes(x = age, y = accuracy)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Age-Related Changes in Accuracy",
+       x = "Age (years)", y = "Accuracy")
+
+p2 <- ggplot(aging_data, aes(x = age, y = mean_rt)) +
+  geom_point(size = 3, color = "darkgreen") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Age-Related Changes in RT",
+       x = "Age (years)", y = "Mean RT (seconds)")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+cat("Simulated Age-Related Changes:\n")
+cat(sprintf("RT increase per decade: %.3f seconds\n", 
+            10 * coef(lm(mean_rt ~ age, data = aging_data))[2]))
+cat(sprintf("Accuracy decline per decade: %.3f\n", 
+            10 * coef(lm(accuracy ~ age, data = aging_data))[2]))
+```
+
+------------------------------------------------------------------------
+
+# Section 8: Exercises and Discussion Points for Journal Club
+
+## Exercise 1: Parameter Intuition
+
+**Task**: Predict the effects of changing parameters, then test your
+predictions.
+
+```{r exercise_1_setup, eval=FALSE}
+# Try these parameter combinations and predict:
+# 1. What will happen to accuracy and RT?
+# 2. How will the RT distributions change?
+
+# Condition A: v = 0.5, a = 0.8, z = 0.4
+# Condition B: v = 0.1, a = 1.5, z = 0.75
+# Condition C: v = 0.3, a = 1.0, z = 0.3
+
+# Test your predictions here:
+test_conditions <- data.frame(
+  condition = c("A", "B", "C"),
+  v = c(0.5, 0.1, 0.3),
+  a = c(0.8, 1.5, 1.0),
+  z = c(0.4, 0.75, 0.3)
+)
+
+# [Add your simulation code here]
+```
+
+## Exercise 2: Real-World Application
+
+**Scenario**: You're studying decision making in a perceptual task where
+participants judge whether a cloud of moving dots is moving left or
+right.
+
+**Questions for Discussion**: 1. How would you map DDM parameters to
+task manipulations? 2. What would high vs. low motion coherence
+correspond to in DDM terms? 3. How might you use speed-accuracy
+instructions?
+
+## Exercise 3: Model Criticism
+
+**Critical Thinking Questions**: 1. What assumptions does the DDM make
+that might not hold in real decision making? 2. When might the DDM fail
+to account for behavior? 3. How would you test whether the DDM is
+appropriate for your data?
+
+## Key Discussion Points
+
+### 1. **Psychological Interpretation of Parameters**
+
+-   **Drift rate (v)**: Evidence quality, stimulus discriminability,
+    cognitive ability
+-   **Threshold (a)**: Cautiousness, speed-accuracy emphasis, cognitive
+    control
+-   **Starting point (z)**: Prior expectations, response bias
+-   **Non-decision time (ter)**: Perceptual encoding, motor execution
+
+### 2. **Model Assumptions and Limitations**
+
+-   **Constant parameters within trial**: Is this realistic?
+-   **Independent trials**: Do previous trials affect current decisions?
+-   **Two-choice limitation**: How to extend to multiple alternatives?
+
+### 3. **Methodological Considerations**
+
+-   **Sample size requirements**: How many trials needed for reliable
+    parameter estimates?
+-   **Individual differences**: Should we fit parameters per person or
+    use hierarchical models?
+-   **Model comparison**: How to compare DDM against alternative models?
+
+### 4. **Future Directions**
+
+-   **Neural implementation**: How do brain circuits implement evidence
+    accumulation?
+-   **Confidence judgments**: Can DDM explain subjective confidence?
+-   **Real-time applications**: Can we use DDM for adaptive experiments?
+
+------------------------------------------------------------------------
+
+# Conclusion: Why the DDM Matters
+
+The Drift Diffusion Model represents a major success story in
+mathematical psychology. It demonstrates that complex cognitive
+phenomena can be understood through relatively simple mathematical
+principles.
+
+## Key Insights from This Tutorial
+
+1.  **Mechanism over Description**: The DDM doesn't just describe what
+    people do; it explains how decisions unfold over time
+2.  **Unifying Framework**: It connects accuracy, reaction time, and
+    confidence in a single framework
+3.  **Practical Applications**: From clinical assessment to user
+    interface design
+4.  **Methodological Rigor**: It provides a principled way to analyze
+    decision-making data
+
+## What We've Learned
+
+-   **Evidence accumulation** is a fundamental principle of decision
+    making
+-   **Speed-accuracy tradeoffs** emerge naturally from the accumulation
+    process
+-   **Individual differences** can be understood through parameter
+    variations
+-   **Simulation** is a powerful tool for understanding complex models
+-   **Model validation** is crucial for ensuring our implementations are
+    correct
+
+## Beyond the Basics
+
+This tutorial covered the foundation, but the DDM field continues to
+evolve: - **Hierarchical models** for analyzing group differences -
+**Neural DDMs** linking behavior to brain activity - **Multi-alternative
+extensions** for complex choice scenarios - **Dynamic models** with
+time-varying parameters
+
+The DDM provides a solid foundation for understanding decision making,
+and the simulation approach we've used here will serve you well as you
+explore more advanced applications.
+
+------------------------------------------------------------------------
+
+**References for Further Reading:**
+
+-   Ratcliff, R., & McKoon, G. (2008). The diffusion decision model:
+    Theory and data for two-choice decision tasks. *Neural Computation*,
+    20(4), 873-922.
+-   Wagenmakers, E. J., et al. (2007). On the linear relation between
+    the mean and the standard deviation of a response time distribution.
+    *Psychological Review*, 114(3), 830-841.
+-   Wiecki, T. V., Sofer, I., & Frank, M. J. (2013). HDDM: Hierarchical
+    Bayesian estimation of the drift-diffusion model in Python.
+    *Frontiers in Neuroinformatics*, 7, 14.
+
+*This tutorial was designed to provide a comprehensive, hands-on
+introduction to the Drift Diffusion Model suitable for journal club
+discussions and collaborative learning.*
