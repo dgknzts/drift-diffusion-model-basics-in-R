@@ -16,11 +16,12 @@ articles:
   - title: "Tutorials"
     contents:
       - "01_introduction_to_random_walks"
-      - "02_simulating_diffusion_model" 
+      - "02_simulating_diffusion_model"
       - "03_parameter_variability"
       - "04_exploring_ddm_parameters"
       - "05_mathematical_foundations_of_ddm"
       - "06_quantile_probability_plots"
+      - "ddm_journal_club_tutorial"
       - "shiny_app"
 
 development:

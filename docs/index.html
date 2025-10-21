@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Drift Diffusion Model Basics in R • DDM_Basics_R</title>
+<title>Drift Diffusion Model Basics in R • DDMBasicsR</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="index.html">DDM_Basics_R</a>
+    <a class="navbar-brand me-2" href="index.html">DDMBasicsR</a>
 
     <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
@@ -47,94 +47,43 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="drift-diffusion-model-ddm-basics-in-r---from-scratch">Drift Diffusion Model (DDM) Basics in R - From Scratch<a class="anchor" aria-label="anchor" href="#drift-diffusion-model-ddm-basics-in-r---from-scratch"></a>
+<div class="page-header"><h1 id="drift-diffusion-model-ddm-basics-in-r">Drift Diffusion Model (DDM) Basics in R<a class="anchor" aria-label="anchor" href="#drift-diffusion-model-ddm-basics-in-r"></a>
 </h1></div>
-<p>This repository provides a resource for understanding and implementing the fundamental principles of the Diffusion Decision Model (DDM) from scratch using the R programming language. The goal is to present the underlying logic and simulation of the model in the simplest and most accessible way.</p>
-<p>This work is heavily inspired by and aims to replicate concepts from “An Introduction to the Diffusion Model of Decision-Making” by Philip L. Smith and Roger Ratcliff.</p>
+<p>I’m learning about drift diffusion models to understand how people make decisions. Starting from basic concepts and working my way up. Just my personal study notes and experiments.</p>
 <div class="section level2">
-<h2 id="repository-structure">Repository Structure<a class="anchor" aria-label="anchor" href="#repository-structure"></a>
+<h2 id="website">Website<a class="anchor" aria-label="anchor" href="#website"></a>
 </h2>
-<ul>
-<li>
-<strong>R Functions (<code>R/</code>):</strong>
-<ul>
-<li>Simulators for simple Random Walks and Diffusion Models</li>
-<li>Functions to demonstrate the effects of DDM parameters</li>
-<li>Helper functions for visualizing results</li>
-</ul>
-</li>
-<li>
-<strong>Documentation (<code>vignettes/</code>):</strong>
-<ul>
-<li>Introduction to random walks and their simulation</li>
-<li>Simulating the diffusion model and its logic</li>
-<li>Understanding DDM parameters (drift rate, threshold, starting point, etc.)</li>
-<li>Exploring parameter variability in DDM</li>
-</ul>
-</li>
-<li>
-<strong>Documentation Site (<code>docs/</code>):</strong>
-<ul>
-<li>Generated pkgdown site with tutorials and API reference</li>
-</ul>
-</li>
-</ul>
+<p><a href="https://dgknzts.github.io/drift-diffusion-model-basics-in-R/" class="uri">https://dgknzts.github.io/drift-diffusion-model-basics-in-R/</a></p>
 </div>
 <div class="section level2">
-<h2 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
+<h2 id="tutorial-content">Tutorial Content<a class="anchor" aria-label="anchor" href="#tutorial-content"></a>
 </h2>
+<p>The <code>vignettes/</code> folder contains tutorials I’m working through:</p>
 <ol style="list-style-type: decimal">
-<li>Clone this repository: <code>git clone https://github.com/dgknzts/drift-diffusion-model-basics-in-R.git</code>
-</li>
-<li>Open <code>DDM_Basics_R.Rproj</code> in RStudio</li>
-<li>Explore the vignettes to learn about DDM:
-<ul>
-<li>Visit the documentation site at <a href="https://dgknzts.github.io/drift-diffusion-model-basics-in-R/" class="uri">https://dgknzts.github.io/drift-diffusion-model-basics-in-R/</a>
-</li>
-<li>Or open the R Markdown files in the <code>vignettes/</code> folder</li>
-</ul>
-</li>
+<li>
+<strong>Introduction to Random Walks</strong> (<code>01_introduction_to_random_walks.Rmd</code>)</li>
+<li>
+<strong>Simulating Diffusion Models</strong> (<code>02_simulating_diffusion_model.Rmd</code>)</li>
+<li>
+<strong>Parameter Variability</strong> (<code>03_parameter_variability.Rmd</code>)</li>
+<li>
+<strong>Exploring DDM Parameters</strong> (<code>04_exploring_ddm_parameters.Rmd</code>)</li>
+<li>
+<strong>Mathematical Foundations</strong> (<code>05_mathematical_foundations_of_ddm.Rmd</code>)</li>
+<li>
+<strong>Quantile Probability Plots</strong> (<code>06_quantile_probability_plots.Rmd</code>)</li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="interactive-ddm-explorer">Interactive DDM Explorer<a class="anchor" aria-label="anchor" href="#interactive-ddm-explorer"></a>
+<h2 id="resources">Resources<a class="anchor" aria-label="anchor" href="#resources"></a>
 </h2>
-<p>To run the interactive Shiny app locally:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># In R console</span></span>
-<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="st">"local-app"</span><span class="op">)</span></span></code></pre></div>
-<p>Or visit the hosted version at: <a href="https://dgknzts.shinyapps.io/DDM-Basics/" class="external-link uri">https://dgknzts.shinyapps.io/DDM-Basics/</a></p>
-</div>
-<div class="section level2">
-<h2 id="key-ddm-parameters-implemented">Key DDM Parameters Implemented<a class="anchor" aria-label="anchor" href="#key-ddm-parameters-implemented"></a>
-</h2>
-<ul>
-<li>
-<code>v</code>: Drift rate (mean rate of evidence accumulation)</li>
-<li>
-<code>a</code>: Threshold separation (boundary separation)</li>
-<li>
-<code>z</code>: Starting point of evidence accumulation (bias)</li>
-<li>
-<code>ter</code> (or <code>t0</code>): Non-decision time (encoding and response execution time)</li>
-<li>
-<code>s</code>: Within-trial noise (standard deviation of the normally distributed increments)</li>
-<li>Parameter variability: <code>sv</code>, <code>sz</code>, <code>st0</code> (across-trial variability in drift, starting point, and non-decision time)</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
-</h2>
-<ul>
-<li>Smith, P. L., &amp; Ratcliff, R. (2024). An Introduction to the Diffusion Model of Decision-Making. <em>In B. U. Forstmann &amp; B. M. Turner (Eds.), An Introduction to Model-Based Cognitive Neuroscience.</em>
-</li>
-<li>Ratcliff, R. (1978). A theory of memory retrieval. <em>Psychological Review, 85</em>(2), 59–108.</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
-</h2>
-<p>This project is licensed under the MIT License - see the <code>LICENSE</code> file for details.</p>
+<p>Forstmann, B. U., &amp; Turner, B. M. (Eds.). (2024). <em>An Introduction to Model-Based Cognitive Neuroscience</em>. Springer International Publishing. <a href="https://doi.org/10.1007/978-3-031-45271-0" class="external-link uri">https://doi.org/10.1007/978-3-031-45271-0</a></p>
+<p>Smith, P. L., &amp; Ratcliff, R. (2024). An Introduction to the Diffusion Model of Decision-Making. In B. U. Forstmann &amp; B. M. Turner (Eds.), <em>An Introduction to Model-Based Cognitive Neuroscience</em> (pp. 1-46). Springer International Publishing.</p>
+<p>Boehm, U., Annis, J., Frank, M. J., Hawkins, G. E., Heathcote, A., Kellen, D., Krypotos, A.-M., Lerche, V., Logan, G. D., Palmeri, T. J., van Ravenzwaaij, D., Servant, M., Singmann, H., Starns, J. J., Voss, A., Wiecki, T. V., Matzke, D., &amp; Wagenmakers, E.-J. (2018). Estimating across-trial variability parameters of the Diffusion Decision Model: Expert advice and recommendations. <em>Journal of Mathematical Psychology</em>, 87, 46–75. <a href="https://doi.org/10.1016/j.jmp.2018.09.004" class="external-link uri">https://doi.org/10.1016/j.jmp.2018.09.004</a></p>
+<p>Myers, C. E., Interian, A., &amp; Moustafa, A. A. (2022). A practical introduction to using the drift diffusion model of decision-making in cognitive psychology, neuroscience, and health sciences. <em>Frontiers in Psychology</em>, 13. <a href="https://doi.org/10.3389/fpsyg.2022.1039172" class="external-link uri">https://doi.org/10.3389/fpsyg.2022.1039172</a></p>
+<p>Ratcliff, R., Smith, P. L., Brown, S. D., &amp; McKoon, G. (2016). Diffusion Decision Model: Current Issues and History. <em>Trends in Cognitive Sciences</em>, 20(4), 260–281. <a href="https://doi.org/10.1016/j.tics.2016.01.007" class="external-link uri">https://doi.org/10.1016/j.tics.2016.01.007</a></p>
+<p>Voss, A., Voss, J., &amp; Lerche, V. (2015). Assessing cognitive processes with diffusion model analyses: A tutorial based on fast-dm-30. <em>Frontiers in Psychology</em>, 6. <a href="https://doi.org/10.3389/fpsyg.2015.00336" class="external-link uri">https://doi.org/10.3389/fpsyg.2015.00336</a></p>
+<p>Wilson, R. C., &amp; Collins, A. G. (2019). Ten simple rules for the computational modeling of behavioral data. <em>eLife</em>, 8, e49547. <a href="https://doi.org/10.7554/eLife.49547" class="external-link uri">https://doi.org/10.7554/eLife.49547</a></p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -157,7 +106,7 @@
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
 <ul class="list-unstyled">
-<li><a href="authors.html#citation">Citing DDM_Basics_R</a></li>
+<li><a href="authors.html#citation">Citing DDMBasicsR</a></li>
 </ul>
 </div>
 

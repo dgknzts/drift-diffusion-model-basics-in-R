@@ -1,7 +1,6 @@
 ---
-title: "Drift Diffusion Model: Step-by-Step Tutorial"
-subtitle: "Building the DDM from Random Walk to Full Model"
-author: "Journal Club Teaching Materials"
+title: "Drift Diffusion Model"
+subtitle: "Random Walk to Full Model"
 date: "2025"
 output: html_document
 ---
@@ -208,7 +207,7 @@ Where:
 
 \- $t$ = continuous time (in seconds)
 
-\- $\Delta t$ = time step size (typically 0.001 seconds)
+\- $\Delta t$ = time step size (e.g., 0.001 seconds)
 
 \- $v$ = drift rate (evidence per second)
 
