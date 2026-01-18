@@ -1,6 +1,6 @@
 # Drift Diffusion Model (DDM) Basics in R
 
-I'm learning about drift diffusion models to understand how people make decisions. Starting from basic concepts and working my way up. Just my personal study notes and experiments.
+Starting from basic concepts and working my way up. Just my personal study notes and experiments.
 
 ## Website
 
